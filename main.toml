@@ -621,6 +621,10 @@ build_path = "services/github-runners"
 image_registry = [
   { domain = "docker.io", account = "serbog" }
 ]
+extra_args = ["--platform linux/amd64"]
+build_args = """
+  
+"""
 
 ##
 
