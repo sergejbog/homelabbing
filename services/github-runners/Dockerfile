@@ -56,9 +56,6 @@ RUN cd /home/docker && mkdir actions-runner && cd actions-runner \
 RUN chown -R docker /home/docker \
     && /home/docker/actions-runner/bin/installdependencies.sh
 
-# Add docker user to the docker group so it can access the socket
-RUN groupadd -f docker-host && usermod -aG docker-host docker
-
 COPY --chmod=+x start.sh /start.sh
 
 USER docker
