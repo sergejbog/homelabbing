@@ -6,7 +6,7 @@ enabled = true
 [[server]]
 name = "ex44"
 [server.config]
-address = "[[EX44_ADDRESS]]"
+address = "https://ex44.periphery.sniperoo.app"
 enabled = true
 
 ##

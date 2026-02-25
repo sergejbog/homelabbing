@@ -39,6 +39,13 @@ http:
         - https
       tls:
         certResolver: myresolver
+    ex44-periphery:
+      rule: Host(`ex44.periphery.{{ env "DOMAIN_NAME" }}`)
+      service: ex44-periphery
+      entryPoints:
+        - https
+      tls:
+        certResolver: myresolver
 
   services:
     pihole:
@@ -57,4 +64,8 @@ http:
       loadBalancer:
         servers:
           - url: http://{{ env "WIREGUARD_PEER_IP" }}:8081 # Peer's WireGuard IP + container port
+    ex44-periphery:
+      loadBalancer:
+        servers:
+          - url: https://{{ env "EX44_IP" }}:8120
 
