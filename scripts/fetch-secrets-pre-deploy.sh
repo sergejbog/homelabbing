@@ -18,7 +18,7 @@ echo "🔐 Fetching secrets from Infisical for ${SERVICE_NAME}..."
 # Falls back to system PATH if available.
 INFISICAL_BIN="/etc/komodo/bin/infisical"
 if [ ! -x "$INFISICAL_BIN" ]; then
-    if command -v infisical &> /dev/null; then
+    if command -v infisical > /dev/null 2>&1; then
         INFISICAL_BIN=$(command -v infisical)
     else
         echo "❌ Infisical CLI not found at $INFISICAL_BIN or in PATH"
