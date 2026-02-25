@@ -70,6 +70,7 @@ services:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
     restart: unless-stopped
     env_file: ./.env
+    privileged: true # Required for Periphery to access Docker socket and host processes
     volumes:
       ## Mount external docker socket
       - /var/run/docker.sock:/var/run/docker.sock
