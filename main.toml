@@ -234,6 +234,30 @@ SERVICE_NAME = freshrss
 ##
 
 [[stack]]
+name = "github-runners"
+[stack.config]
+server = "ex44"
+linked_repo = "homelabbing"
+run_directory = "services/github-runners"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh github-runners
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh github-runners
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = github-runners
+"""
+
+##
+
+[[stack]]
 name = "glance"
 [stack.config]
 server = "Local"
