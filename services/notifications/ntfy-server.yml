@@ -1,4 +1,4 @@
-base-url: "https://notifications.${DOMAIN_NAME}"
+base-url: https://notifications.{{ env "WIREGUARD_PEER_IP" }}
 cache-file: "/var/cache/ntfy/cache.db"
 attachment-cache-dir: "/var/cache/ntfy/attachments"
 behind-proxy: true
