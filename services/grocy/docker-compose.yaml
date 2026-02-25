@@ -8,6 +8,8 @@ services:
       - TZ=CET
     volumes:
       - /path/to/grocy/config:/config
+    ports:
+      - 9283:80
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.grocy.entrypoints=https"
@@ -18,6 +20,7 @@ services:
     restart: unless-stopped
     networks:
       proxy:
+
 
 networks:
   proxy:
