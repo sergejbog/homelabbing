@@ -5,6 +5,8 @@ services:
     image: serbog/github-actions-runner:latest
     restart: always
     env_file: .env
+    environment:
+      - DOCKER_GID=988
     group_add:
       - ${DOCKER_GID:-999}
     volumes:
