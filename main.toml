@@ -3,6 +3,8 @@ name = "Local"
 [server.config]
 enabled = true
 
+##
+
 [[server]]
 name = "ex44"
 [server.config]
@@ -365,6 +367,31 @@ environment = """
   # VARIABLE = value
 SERVICE_NAME = komodo
 ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/komodo.svg
+"""
+
+##
+
+[[stack]]
+name = "loki"
+[stack.config]
+server = "ex44"
+project_name = "loki"
+linked_repo = "homelabbing"
+run_directory = "services/loki"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh loki
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh loki
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = loki
 """
 
 ##
