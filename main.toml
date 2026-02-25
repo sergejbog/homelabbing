@@ -797,9 +797,6 @@ try {
     await komodo.write('DeleteTerminal', { terminal: terminalName, server: serverId });
 }
 """
-arguments = """
-# ARG_NAME = value
-"""
 
 ##
 
