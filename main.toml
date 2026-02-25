@@ -308,6 +308,30 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.sv
 ##
 
 [[stack]]
+name = "grocy"
+[stack.config]
+server = "ex44"
+linked_repo = "homelabbing"
+run_directory = "services/grocy"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh grocy
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh grocy
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = grocy
+"""
+
+##
+
+[[stack]]
 name = "infisical"
 [stack.config]
 server = "Local"
@@ -643,6 +667,42 @@ executions = [
 ##
 
 [[procedure]]
+name = "Backup-All"
+description = "Backs up all services via Komodo. Services are grouped by priority — critical runs first, then high, then medium. Each group runs in parallel."
+tags = ["backup", "system"]
+config.schedule = "Every day at 01:10"
+
+[[procedure.config.stage]]
+name = "Critical"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "infisical", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "vaultwarden", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "komodo", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "High"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "n8n", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "bookstack", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "chatwoot", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Medium"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "budibase", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "notifications", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "uptime-kuma", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "wallos", enabled = true }
+]
+
+##
+
+[[procedure]]
 name = "Global Auto Update"
 description = "Pulls and auto updates Stacks and Deployments using 'poll_for_updates' or 'auto_update'."
 tags = ["system"]
@@ -673,38 +733,6 @@ enabled = true
 executions = [
   { execution.type = "RunAction", execution.params.action = "Redeploy-If-Changed", execution.params.args = {}, enabled = true }
 ]
-
-##
-
-[[action]]
-name = "Redeploy-If-Changed"
-[action.config]
-file_contents = """
-var stacks = await komodo.read('ListStacks', {})
-
-var filteredStacks = stacks
-  .filter(stack => !stack.template && stack.name !== 'komodo' && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
-  .map(stack => [stack.id, stack.name])
-
-for (const [id, name] of filteredStacks) {
-  console.log(`Processing stack: ${name} (${id})`)
-  await komodo.execute('DeployStackIfChanged', { stack: id })
-}
-"""
-
-##
-
-[[action]]
-name = "infisical"
-[action.config]
-file_contents = """
-// Run actions using the pre initialized 'komodo' client.
-const version: Types.GetVersionResponse = await komodo.read('GetVersion', {});
-console.log('🦎 Komodo version:', version.version, '🦎\n');
-
-// Access arguments using the 'ARGS' object.
-console.log(ARGS);
-"""
 
 ##
 
@@ -750,40 +778,35 @@ try {
 
 ##
 
-[[procedure]]
-name = "Backup-All"
-description = "Backs up all services via Komodo. Services are grouped by priority — critical runs first, then high, then medium. Each group runs in parallel."
-tags = ["backup", "system"]
-config.schedule = "Every day at 01:10"
+[[action]]
+name = "Redeploy-If-Changed"
+[action.config]
+file_contents = """
+var stacks = await komodo.read('ListStacks', {})
 
-[[procedure.config.stage]]
-name = "Critical"
-enabled = true
-executions = [
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "infisical" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "vaultwarden" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "komodo" }, enabled = true },
-]
+var filteredStacks = stacks
+  .filter(stack => !stack.template && stack.name !== 'komodo' && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
+  .map(stack => [stack.id, stack.name])
 
-[[procedure.config.stage]]
-name = "High"
-enabled = true
-executions = [
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "n8n" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "bookstack" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "chatwoot" }, enabled = true },
-]
+for (const [id, name] of filteredStacks) {
+  console.log(`Processing stack: ${name} (${id})`)
+  await komodo.execute('DeployStackIfChanged', { stack: id })
+}
+"""
 
-[[procedure.config.stage]]
-name = "Medium"
-enabled = true
-executions = [
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "budibase" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "notifications" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "uptime-kuma" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "grocy" }, enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args = { service = "wallos" }, enabled = true },
-]
+##
+
+[[action]]
+name = "infisical"
+[action.config]
+file_contents = """
+// Run actions using the pre initialized 'komodo' client.
+const version: Types.GetVersionResponse = await komodo.read('GetVersion', {});
+console.log('🦎 Komodo version:', version.version, '🦎\n');
+
+// Access arguments using the 'ARGS' object.
+console.log(ARGS);
+"""
 
 ##
 
