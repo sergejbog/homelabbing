@@ -5,15 +5,13 @@ services:
     image: youssefbrr/github-actions:latest # You can use this image or build your own
     restart: always
     env_file: .env
-    environment:
-      - NAME=github-runner
     deploy:
       mode: replicated
-      replicas: 2
+      replicas: 4
       resources:
         limits:
-          cpus: '0.5'
-          memory: 512M
+          cpus: '3'
+          memory: 12G
         reservations:
-          cpus: '0.4'
-          memory: 256M
+          cpus: '2'
+          memory: 8G
