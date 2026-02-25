@@ -106,7 +106,7 @@ services:
     priority: medium
     type: volume
     volumes:
-      - grocy_config
+      - grocy_grocy_config
     compose_file: services/grocy/docker-compose.yaml
     notes: "Personal inventory management - config volume with SQLite DB"
 
