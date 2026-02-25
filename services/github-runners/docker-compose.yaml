@@ -2,9 +2,11 @@ version: '3.8'
 
 services:
   runner:
-    image: youssefbrr/github-actions:latest # You can use this image or build your own
+    build: .
     restart: always
     env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       mode: replicated
       replicas: 4
