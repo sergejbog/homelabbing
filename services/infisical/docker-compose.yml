@@ -7,7 +7,7 @@ services:
         condition: service_healthy
       infisical-redis:
         condition: service_started
-    image: infisical/infisical:latest-postgres
+    image: infisical/infisical:latest
     pull_policy: always
     env_file: .env
     labels:
