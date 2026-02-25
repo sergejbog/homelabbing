@@ -1,4 +1,3 @@
-base-url: https://notifications.{{ env "DOMAIN_NAME" }}
 cache-file: "/var/cache/ntfy/cache.db"
 attachment-cache-dir: "/var/cache/ntfy/attachments"
 behind-proxy: true
