@@ -5,6 +5,8 @@ services:
     build: .
     restart: always
     env_file: .env
+    group_add:
+      - ${DOCKER_GID:-999}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
