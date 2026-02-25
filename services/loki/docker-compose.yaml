@@ -1,4 +1,4 @@
-name: loki-server
+name: loki
 volumes:
   loki: {}
 
@@ -9,7 +9,9 @@ services:
     networks:
       - loki-network
     image: grafana/loki:latest
-    command: [ "-config.file=/etc/loki/loki.yaml", "--target=all" ]
+    env_file:
+      - .env
+    command: [ "-config.file=/etc/loki/loki.yaml", "--target=all", "-config.expand-env=true" ]
     ports:
       - "3100:3100"
       - "9096:9096"
@@ -30,12 +32,6 @@ services:
       - GOMEMLIMIT=7GiB
       - GOMAXPROCS=4
       - GOGC=100
-      - LOKI_S3_BUCKET=${LOKI_S3_BUCKET}
-      - AWS_REGION=${AWS_REGION}
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
-      - S3_SECRET_KEY=${S3_SECRET_KEY}
-    env_file:
-      - .env
     restart: unless-stopped
     # Health check
     healthcheck:
