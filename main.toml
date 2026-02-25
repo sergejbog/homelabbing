@@ -564,6 +564,16 @@ repo = "monkegobonkers/self-hosted"
 
 ##
 
+[[repo]]
+name = "homelabbing"
+[repo.config]
+server = "Local"
+builder = "Local"
+git_account = "sergejbog"
+repo = "sergejbog/homelabbing"
+
+##
+
 [[procedure]]
 name = "Backup Core Database"
 description = "Triggers the Core database backup at the scheduled time."
@@ -656,6 +666,6 @@ params.server_id = "Local"
 [[resource_sync]]
 name = "main-sync"
 [resource_sync.config]
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 resource_path = ["main.toml"]
 managed = true
