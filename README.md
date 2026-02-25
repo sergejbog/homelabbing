@@ -41,7 +41,8 @@ Secrets are fetched from Infisical before each deployment and cleaned up after:
 deploy → fetch-secrets-pre-deploy.sh → docker compose up → cleanup-secrets-post-deploy.sh
 ```
 
-Each service has a corresponding secret path in Infisical. No credentials ever touch this repository or the filesystem beyond the deploy lifecycle.
+Each service has a corresponding folder in Infisical. The folder name is the same as the folder in this repo under `services/`. For example, secrets for the `chatwoot` service live in the `chatwoot` folder in Infisical. 
+No credentials ever touch this repository or the filesystem beyond the deploy lifecycle.
 
 One secret is required at the **project level** in Infisical:
 
