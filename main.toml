@@ -745,36 +745,59 @@ file_contents = """
 const service: string = ARGS.service;
 if (!service) throw new Error('ARGS.service is required');
 
-const scriptPath = '/etc/komodo/repos/homelab/scripts/backup-manager.sh';
+const scriptPath = '/etc/komodo/repos/homelabbing/scripts/backup-manager.sh';
 
 // Find the Komodo stack matching this service name
 const stacks = await komodo.read('ListStacks', {});
 const stack = stacks.find((s: any) => s.name === service);
 
 if (!stack) {
-  throw new Error(`No Komodo stack found matching service name: '${service}'. Ensure the stack name matches the backup-config.yml service name, or add a 'komodo_stack' override in backup-config.yml.`);
+    throw new Error(`No Komodo stack found matching service name: '${service}'. Ensure the stack name matches the backup-config.yml service name, or add a 'komodo_stack' override in backup-config.yml.`);
 }
 
-const serverName: string = stack.config.server;
-console.log(`Service '${service}' found on server: '${serverName}'`);
+const serverId: string = stack.info.server_id;
 
+// Resolve server ID to server name (required for CreateTerminal)
+const servers = await komodo.read('ListServers', {});
+const server = servers.find((s: any) => s.id === serverId);
+
+if (!server) {
+    throw new Error(`Could not resolve server for id: '${serverId}'`);
+}
+
+const serverName: string = server.name;
+console.log(`Service '${service}' found on server: '${serverName}' (id: ${serverId})`);
+
+const terminalName = `backup-${service}-${Date.now()}`;
 // Create an ephemeral terminal on the target server
 const terminal = await komodo.write('CreateTerminal', {
-  name: `backup-${service}-${Date.now()}`,
-  server: serverName,
+    name: terminalName,
+    server: serverName,
+    command: "bash"
 });
 
+
 try {
-  console.log(`Running: ${scriptPath} backup ${service}`);
-  await komodo.execute_server_terminal({
-    terminal: terminal.id,
-    command: `${scriptPath} backup ${service}`,
-  });
-  console.log(`✓ Backup completed for: ${service}`);
+    const cmd = `export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"; bash ${scriptPath} backup ${service}`;
+    console.log(`Running: ${scriptPath} backup ${service}`);
+    const result = await komodo.execute_terminal({
+        command: cmd,
+        server: serverId,
+        terminal: terminalName
+    }, {
+        onLine: (line) => console.log(line),
+        onFinish: (code) => console.log("Finished:", code),
+    });
+    console.log('Result:', JSON.stringify(result, null, 2));
+    console.log(`✓ Backup completed for: ${service}`);
 } finally {
-  // Always clean up the terminal even if backup fails
-  await komodo.write('DeleteTerminal', { terminal: terminal.id });
+    // Always clean up the terminal even if backup fails
+    await komodo.write('DeleteTerminal', { terminal: terminalName, server: serverId });
 }
+"""
+arguments = """
+# ARG_NAME = value
+service = grocy
 """
 
 ##
