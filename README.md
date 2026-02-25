@@ -43,6 +43,14 @@ deploy → fetch-secrets-pre-deploy.sh → docker compose up → cleanup-secrets
 
 Each service has a corresponding secret path in Infisical. No credentials ever touch this repository or the filesystem beyond the deploy lifecycle.
 
+One secret is required at the **project level** in Infisical:
+
+| Variable | Notes |
+|---|---|
+| `DOMAIN_NAME` | Used by virtually every service for constructing URLs |
+
+All other secrets are service-specific — refer to each service's own documentation or the comments in its `.env.example` for what's needed.
+
 See `scripts/` for the full deployment and backup workflow.
 
 ## Backup Strategy
