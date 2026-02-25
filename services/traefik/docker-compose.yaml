@@ -52,6 +52,7 @@ services:
           - apprise.${DOMAIN_NAME}
           - wallos.${DOMAIN_NAME}
           - glance.${DOMAIN_NAME}
+          - ex44.periphery.${DOMAIN_NAME}
 
 networks:
   proxy:

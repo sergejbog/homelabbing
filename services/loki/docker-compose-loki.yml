@@ -10,6 +10,7 @@ services:
       - loki-network
     image: grafana/loki:latest
     command: [ "-config.file=/etc/loki/loki.yaml", "--target=all" ]
+    env_file: .env
     ports:
       - "3100:3100"
       - "9096:9096"
@@ -25,7 +26,6 @@ services:
         reservations:
           memory: 4G
           cpus: '2.0'
-    env_file: .env
     # Optimized environment variables
     environment:
       - GOMEMLIMIT=7GiB
