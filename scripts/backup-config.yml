@@ -1,6 +1,12 @@
 # Backup Configuration for Self-Hosted Services
 # This file defines backup strategies for all services
 # Priority levels: critical (4x daily), high (2x daily), medium (1x daily), low (weekly)
+#
+# Multi-server support:
+#   Backups are orchestrated by the Komodo "Backup-Service" Action, which queries the
+#   Komodo API to find which server hosts each stack and routes the backup there.
+#   By default, the service name here must match the Komodo stack name exactly.
+#   If they differ, add: komodo_stack: <komodo-stack-name>
 
 services:
   # === CRITICAL SERVICES ===

@@ -1,2 +1,6 @@
-# Backup Komodo database backups to Restic (runs 10 minutes after Komodo procedure)
-10 1 * * * /etc/komodo/repos/homelab/scripts/backup-manager.sh backup-all >> /var/log/backup-komodo.log 2>&1
+# Backups are now orchestrated by the Komodo "Backup-All" procedure (scheduled daily at 01:10).
+# The procedure routes each service to the correct server automatically via Komodo Periphery.
+# See: main.toml [[procedure]] "Backup-All" and [[action]] "Backup-Service"
+#
+# Uncomment below only as a fallback if Komodo scheduling is unavailable:
+# 10 1 * * * /etc/komodo/repos/homelab/scripts/backup-manager.sh backup-all >> /var/log/backup-komodo.log 2>&1
