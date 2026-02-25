@@ -9,7 +9,7 @@ enabled = true
 name = "backrest"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/backrest"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -35,7 +35,7 @@ name = "base-template"
 template = true
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.command = """
@@ -54,7 +54,7 @@ environment = """
 name = "bookstack"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/bookstack"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -79,7 +79,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bookstack.
 name = "budibase"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/budibase"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -104,7 +104,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/budibase.s
 name = "changedetection"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/changedetection"
 file_paths = ["docker-compose.yml"]
 pre_deploy.path = "../../scripts"
@@ -128,7 +128,7 @@ environment = """
 name = "chatwoot"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/chatwoot"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -153,7 +153,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/chatwoot.s
 name = "epicgames-claimer"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/epicgames-claimer"
 file_paths = ["docker-compose.yaml"]
 config_files = [
@@ -181,7 +181,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/epic-games
 name = "flaresolverr"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/flaresolverr"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -205,7 +205,7 @@ SERVICE_NAME = flaresolverr
 name = "freshrss"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/freshrss"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -229,7 +229,7 @@ SERVICE_NAME = freshrss
 name = "glance"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/glance"
 file_paths = ["docker-compose.yml"]
 pre_deploy.path = "../../scripts"
@@ -254,7 +254,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/glance.svg
 name = "grafana-stack"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/grafana"
 file_paths = ["docker-compose.yml"]
 pre_deploy.path = "../../scripts"
@@ -279,7 +279,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.sv
 name = "infisical"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/infisical"
 file_paths = ["docker-compose.yml"]
 pre_deploy.command = """
@@ -299,7 +299,7 @@ environment = """
 name = "ipfs"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/ipfs"
 file_paths = ["docker-compose.yml"]
 pre_deploy.path = "../../scripts"
@@ -322,7 +322,7 @@ environment = """
 name = "it-tools"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/it-tools"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.command = """
@@ -342,7 +342,7 @@ environment = """
 name = "komodo"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/komodo"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -367,7 +367,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/komodo.svg
 name = "n8n"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/n8n"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -392,7 +392,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg
 name = "node-exporter"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/node-exporter"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.command = """
@@ -412,7 +412,7 @@ environment = """
 name = "notifications"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/notifications"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -436,7 +436,7 @@ environment = """
 name = "reactive-resume"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/reactive-resume"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -461,7 +461,7 @@ name = "secrets-included-template"
 template = true
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -485,7 +485,7 @@ SERVICE_NAME =
 name = "uptime-kuma"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/uptime-kuma"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -509,7 +509,7 @@ environment = """
 name = "vaultwarden"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/vaultwarden"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -534,7 +534,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarde
 name = "wallos"
 [stack.config]
 server = "Local"
-linked_repo = "homelab"
+linked_repo = "homelabbing"
 run_directory = "services/wallos"
 file_paths = ["docker-compose.yaml"]
 pre_deploy.path = "../../scripts"
@@ -611,7 +611,7 @@ name = "Pull-And-Deploy"
 name = "Stage 1"
 enabled = true
 executions = [
-  { execution.type = "PullRepo", execution.params.repo = "homelab", enabled = true }
+  { execution.type = "PullRepo", execution.params.repo = "homelabbing", enabled = true }
 ]
 
 [[procedure.config.stage]]
