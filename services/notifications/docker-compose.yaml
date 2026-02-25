@@ -5,6 +5,8 @@ services:
     command:
       - serve
     container_name: "ntfy"
+    env_file:
+      - .env
     environment:
       - TZ=UTC
       - NTFY_AUTH_DEFAULT_ACCESS=deny-all
