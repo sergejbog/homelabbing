@@ -611,6 +611,19 @@ environment = """
 
 ##
 
+[[build]]
+name = "github-build"
+[build.config]
+builder = "Local"
+image_name = "github-runner"
+linked_repo = "homelabbing"
+build_path = "services/github-runners"
+image_registry = [
+  { domain = "docker.io", account = "serbog" }
+]
+
+##
+
 [[repo]]
 name = "homelab"
 [repo.config]
