@@ -24,7 +24,7 @@ A production-grade homelab running 28 self-hosted services on a single server, m
 
 **Key design decisions:**
 - Each service lives in its own `services/<name>/` directory with a `docker-compose` file
-- Secrets are **never stored in this repo** — injected at deploy time via [Infisical](https://infisical.com/)
+- Secrets are **never stored in this repo**, they are injected at deploy time via [Infisical](https://infisical.com/)
 - [Komodo](https://komo.do/) orchestrates deployments and syncs state from this repo (`main.toml`)
 - [Traefik](https://traefik.io/) handles routing and automatic TLS certificates via Let's Encrypt
 - Encrypted offsite backups to Backblaze B2 via [Restic](https://restic.net/)
@@ -50,7 +50,7 @@ One secret is required at the **project level** in Infisical:
 |---|---|
 | `DOMAIN_NAME` | Used by virtually every service for constructing URLs |
 
-All other secrets are service-specific — refer to each service's own documentation or the comments in its `.env.example` for what's needed.
+All other secrets are service-specific. Refer to each service's own documentation or the comments in its `.env.example` for what's needed.
 
 See `scripts/` for the full deployment and backup workflow.
 
@@ -61,7 +61,7 @@ See `scripts/` for the full deployment and backup workflow.
 - **When**: Daily at 01:10 via cron
 - **Notifications**: Backup status sent via Apprise to ntfy
 
-Services and their retention policies are declared in `scripts/backup-config.yml`. The crontab is in `scripts/my-crontab.txt` — load it with:
+Services and their retention policies are declared in `scripts/backup-config.yml`. The crontab is in `scripts/my-crontab.txt`, load it with:
 
 ```bash
 crontab scripts/my-crontab.txt
@@ -71,7 +71,7 @@ See `scripts/BACKUP-GUIDE.md` for full setup and restore instructions.
 
 ## Bootstrap / Disaster Recovery
 
-The stack has a specific bring-up order because most services depend on Infisical for their secrets, and Infisical itself needs to be running first. Three `.env` files are required before anything can start — they are gitignored and must be created from their `.example` counterparts.
+The stack has a specific bring-up order because most services depend on Infisical for their secrets, and Infisical itself needs to be running first. Three `.env` files are required before anything can start. They are gitignored and must be created from their `.example` counterparts.
 
 ### 1. Fill in the required `.env` files
 
