@@ -1,7 +1,7 @@
 services:
   traefik:
     # The official v3 Traefik docker image
-    image: traefik:v3.3
+    image: traefik:latest
     container_name: "traefik"
     env_file: .env
     # Enables the web UI and tells Traefik to listen to docker
