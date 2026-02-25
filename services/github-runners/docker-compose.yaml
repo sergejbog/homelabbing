@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   runner:
-    image: serbog/github-runner:latest
+    image: serbog/github-actions-runner:latest
     restart: always
     env_file: .env
     group_add:
