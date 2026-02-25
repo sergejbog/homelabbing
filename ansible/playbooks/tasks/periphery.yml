@@ -3,4 +3,4 @@
     docker compose
     -f {{ komodo_repo_path }}/services/komodo/docker-compose-periphery.yaml
     up -d
-  when: inventory_hostname != 'local' and inventory_hostname != 'test'
+  when: inventory_hostname != 'host01' and inventory_hostname != 'test'
