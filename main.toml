@@ -553,7 +553,7 @@ sh ./cleanup-secrets-post-deploy.sh
 """
 environment = """
   # VARIABLE = value
-SERVICE_NAME = 
+SERVICE_NAME =
 """
 
 ##
@@ -695,6 +695,7 @@ name = "Medium"
 enabled = true
 executions = [
   { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "budibase", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "reactive-resume", enabled = true },
   { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "notifications", enabled = true },
   { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "uptime-kuma", enabled = true },
   { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "grocy", enabled = true },

@@ -73,6 +73,18 @@ services:
 
   # === MEDIUM PRIORITY SERVICES ===
 
+  reactive-resume:
+    priority: medium
+    type: postgres
+    container: reactive_resume_postgres
+    database: postgres
+    user: postgres
+    compose_file: services/reactive-resume/docker-compose.yaml
+    volumes_also:
+      - reactive_reactive_resume_data
+    notes: "Personal resume builder - backup DB + storage directory"
+
+
   budibase:
     priority: medium
     type: volume
