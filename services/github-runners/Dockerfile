@@ -27,6 +27,7 @@ RUN apt-get install -y --no-install-recommends \
     python3-venv \
     python3-dev \
     python3-pip \
+    protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI + Buildx plugin (for docker/build-push-action)
