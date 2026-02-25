@@ -3,6 +3,12 @@ name = "Local"
 [server.config]
 enabled = true
 
+[[server]]
+name = "ex44"
+[server.config]
+address = "[[EX44_ADDRESS]]"
+enabled = true
+
 ##
 
 [[stack]]
