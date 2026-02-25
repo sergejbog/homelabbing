@@ -1,0 +1,56 @@
+---
+- name: Tear down server bootstrap
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Remove cloned repo
+      file:
+        path: "{{ komodo_repo_path }}"
+        state: absent
+
+    - name: Remove backup .env
+      file:
+        path: "{{ scripts_env_path }}"
+        state: absent
+
+    - name: Remove restic binary
+      file:
+        path: "{{ restic_install_path }}"
+        state: absent
+
+    - name: Remove Infisical CLI
+      apt:
+        name: infisical
+        state: absent
+        purge: yes
+
+    - name: Remove Infisical apt repository
+      file:
+        path: /etc/apt/sources.list.d/infisical-infisical-cli.list
+        state: absent
+
+    - name: Remove Docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: absent
+        purge: yes
+
+    - name: Remove Docker apt repository
+      file:
+        path: /etc/apt/sources.list.d/docker.list
+        state: absent
+
+    - name: Remove Docker GPG key
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        state: absent
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes

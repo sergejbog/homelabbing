@@ -1,0 +1,34 @@
+- name: Install base packages
+  apt:
+    name: [jq, curl, bzip2, gnupg, ca-certificates, git]
+    state: present
+    update_cache: yes
+
+- name: Download and install restic
+  shell: |
+    curl -sL https://github.com/restic/restic/releases/download/v{{ restic_version }}/restic_{{ restic_version }}_linux_amd64.bz2 \
+      | bunzip2 > {{ restic_install_path }}
+    chmod +x {{ restic_install_path }}
+  args:
+    creates: "{{ restic_install_path }}"
+
+- name: Install Docker via official script
+  shell: curl -fsSL https://get.docker.com | sh
+  args:
+    creates: /usr/bin/docker
+
+- name: Install docker-compose-plugin
+  apt:
+    name: docker-compose-plugin
+    state: present
+
+- name: Add Infisical apt repository
+  shell: curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
+  args:
+    creates: /etc/apt/sources.list.d/infisical-infisical-cli.list
+
+- name: Install Infisical CLI
+  apt:
+    name: infisical
+    state: present
+    update_cache: yes

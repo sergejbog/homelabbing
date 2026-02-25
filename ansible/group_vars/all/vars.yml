@@ -1,0 +1,49 @@
+# Versions & paths
+restic_version: "0.17.3"
+restic_install_path: /usr/bin/restic
+komodo_repo_url: "https://github.com/sergejbog/homelabbing.git"
+komodo_repo_path: /etc/komodo/repos/homelabbing
+komodo_backups_path: /etc/komodo/backups
+periphery_root_directory: /etc/komodo
+
+# Derived paths
+scripts_env_path: "{{ komodo_repo_path }}/scripts/.env"
+infisical_env_path: "{{ komodo_repo_path }}/services/infisical/.env"
+traefik_env_path: "{{ komodo_repo_path }}/services/traefik/.env"
+komodo_env_path: "{{ komodo_repo_path }}/services/komodo/.env"
+
+# Komodo / Periphery config (non-identifying)
+komodo_image_tag: latest
+komodo_db_username: admin
+komodo_init_admin_username: admin
+komodo_jwt_ttl: 1-day
+komodo_monitoring_interval: 15-sec
+komodo_resource_poll_interval: 1-hr
+komodo_title: Komodo
+komodo_disable_confirm_dialog: "false"
+komodo_disable_non_admin_create: "false"
+komodo_disable_user_registration: "false"
+komodo_enable_new_users: "false"
+komodo_github_oauth_enabled: "false"
+komodo_google_oauth_enabled: "false"
+komodo_local_auth: "true"
+komodo_logging_pretty: "false"
+komodo_oidc_enabled: "false"
+komodo_pretty_startup_config: "false"
+komodo_transparent_mode: "false"
+periphery_disable_terminals: "false"
+periphery_include_disk_mounts: /etc/hostname
+periphery_logging_pretty: "false"
+periphery_pretty_startup_config: "false"
+periphery_ssl_enabled: "true"
+tz: Etc/UTC
+
+# Infisical service config (non-identifying)
+infisical_postgres_user: infisical
+infisical_postgres_db: infisical
+infisical_redis_url: "redis://infisical-redis:6379"
+infisical_smtp_port: "2525"
+infisical_smtp_security: starttls
+
+# Backup script config (non-identifying)
+apprise_config: apprise

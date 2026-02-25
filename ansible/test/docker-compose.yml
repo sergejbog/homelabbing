@@ -1,0 +1,6 @@
+services:
+  test-server:
+    build: .
+    ports:
+      - "2222:22"
+    privileged: true

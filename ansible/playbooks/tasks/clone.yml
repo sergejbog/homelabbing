@@ -1,0 +1,12 @@
+- name: Create repo parent directory
+  file:
+    path: /etc/komodo/repos
+    state: directory
+    mode: '0755'
+
+- name: Clone homelabbing repo
+  git:
+    repo: "{{ komodo_repo_url }}"
+    dest: "{{ komodo_repo_path }}"
+    version: main
+    update: no  # don't overwrite local changes on re-runs

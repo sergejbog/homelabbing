@@ -1,0 +1,14 @@
+all:
+  hosts:
+    host01:
+      ansible_host: "{{ host01_ip_address }}"
+      ansible_connection: ssh
+    ex44:
+      ansible_host: "{{ ex44_ip_address }}"
+      ansible_connection: ssh
+    test:
+      ansible_host: "{{test_ip_address }}"
+      ansible_port: 2222
+      ansible_connection: ssh
+      ansible_ssh_pass: test
+      ansible_become: false

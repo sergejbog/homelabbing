@@ -1,0 +1,32 @@
+DOMAIN_NAME={{ vault_infisical_domain_name }}
+
+ENCRYPTION_KEY={{ vault_infisical_encryption_key }}
+AUTH_SECRET={{ vault_infisical_auth_secret }}
+
+POSTGRES_PASSWORD={{ vault_infisical_postgres_password }}
+POSTGRES_USER={{ infisical_postgres_user }}
+POSTGRES_DB={{ infisical_postgres_db }}
+DB_CONNECTION_URI=postgres://{{ infisical_postgres_user }}:{{ vault_infisical_postgres_password }}@db:5432/{{ infisical_postgres_db }}
+
+REDIS_URL={{ infisical_redis_url }}
+
+SITE_URL={{ vault_infisical_site_url }}
+
+SMTP_FROM_NAME="{{ vault_infisical_smtp_from_name }}"
+SMTP_HOST="{{ vault_infisical_smtp_host }}"
+SMTP_PORT="{{ infisical_smtp_port }}"
+SMTP_SECURITY="{{ infisical_smtp_security }}"
+SMTP_USERNAME="{{ vault_infisical_smtp_username }}"
+SMTP_PASSWORD="{{ vault_infisical_smtp_password }}"
+SMTP_FROM_ADDRESS="{{ vault_infisical_smtp_from_address }}"
+
+INF_APP_CONNECTION_GITHUB_APP_CLIENT_ID="{{ vault_infisical_github_app_client_id }}"
+INF_APP_CONNECTION_GITHUB_APP_CLIENT_SECRET="{{ vault_infisical_github_app_client_secret }}"
+INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY="{{ vault_infisical_github_app_private_key }}"
+INF_APP_CONNECTION_GITHUB_APP_SLUG="{{ vault_infisical_github_app_slug }}"
+INF_APP_CONNECTION_GITHUB_APP_ID="{{ vault_infisical_github_app_id }}"
+
+OTEL_TELEMETRY_COLLECTION_ENABLED=false
+OTEL_EXPORT_TYPE=prometheus
+ENABLE_MSSQL_SECRET_ROTATION_ENCRYPT=true
+KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN=false

@@ -1,0 +1,10 @@
+---
+- name: Bootstrap server
+  hosts: all
+  become: true
+
+  tasks:
+    - import_tasks: tasks/packages.yml
+    - import_tasks: tasks/clone.yml
+    - import_tasks: tasks/secrets.yml
+    - import_tasks: tasks/periphery.yml

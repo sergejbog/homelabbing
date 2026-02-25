@@ -1,0 +1,6 @@
+- name: Start periphery
+  shell: >
+    docker compose
+    -f {{ komodo_repo_path }}/services/komodo/docker-compose-periphery.yaml
+    up -d
+  when: inventory_hostname != 'local' and inventory_hostname != 'test'
