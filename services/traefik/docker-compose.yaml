@@ -1,0 +1,58 @@
+services:
+  traefik:
+    # The official v3 Traefik docker image
+    image: traefik:v3.3
+    container_name: "traefik"
+    env_file: .env
+    # Enables the web UI and tells Traefik to listen to docker
+    ports:
+      - "443:443"
+      - "5432:5432"
+      - "3306:3306"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.entrypoints=http" # restricts dashboard to internal entrypoint
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN_NAME}`)" # if you want a internal domain, get the wildcard cert for it and then choos traefik-dashboard.home.yourdomain.co.uk or what you want
+      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
+      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${DOMAIN_NAME}`)" # if you want a internal domain, get the wildcard cert for it and then choos traefik-dashboard.home.yourdomain.co.uk or what you want
+      - "traefik.http.routers.traefik-secure.middlewares=admin-auth@file"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=myresolver"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "./traefik.yaml:/traefik.yaml:ro"
+      - "./config.yaml:/config.yaml:ro"
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./logs:/var/log/traefik
+    networks:
+      proxy:
+        aliases:
+          - automation.${DOMAIN_NAME}
+          - chatwoot.${DOMAIN_NAME}
+          - komodo.${DOMAIN_NAME}
+          - grafana.${DOMAIN_NAME}
+          - traefik.${DOMAIN_NAME}
+          - uptime-kuma.${DOMAIN_NAME}
+          - wiki.${DOMAIN_NAME}
+          - grocy.${DOMAIN_NAME}
+          - tools.${DOMAIN_NAME}
+          - change.${DOMAIN_NAME}
+          - budibase.${DOMAIN_NAME}
+          - backrest.${DOMAIN_NAME}
+          - vw.${DOMAIN_NAME}
+          - secrets.${DOMAIN_NAME}
+          - notifications.${DOMAIN_NAME}
+          - apprise.${DOMAIN_NAME}
+          - wallos.${DOMAIN_NAME}
+          - glance.${DOMAIN_NAME}
+
+networks:
+  proxy:
+    external: true

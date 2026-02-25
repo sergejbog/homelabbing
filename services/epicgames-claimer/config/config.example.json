@@ -1,0 +1,16 @@
+{
+  "runOnStartup": true,
+  "cronSchedule": "0 0,6,12,18 * * *",
+  "logLevel": "info",
+  "webPortalConfig": {
+    "baseUrl": "https://epicgamesclaimer.yourdomain.com"
+  },
+  "accounts": [
+    {
+      "email": "your-primary-email@gmail.com"
+    },
+    {
+      "email": "your-secondary-email@gmail.com"
+    }
+  ]
+}

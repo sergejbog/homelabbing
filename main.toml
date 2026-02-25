@@ -1,0 +1,661 @@
+[[server]]
+name = "Local"
+[server.config]
+enabled = true
+
+##
+
+[[stack]]
+name = "backrest"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/backrest"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh backrest
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh backrest
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = backrest
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/backrest-light.svg
+"""
+
+##
+
+[[stack]]
+name = "base-template"
+template = true
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+environment = """
+  # VARIABLE = value
+"""
+
+##
+
+[[stack]]
+name = "bookstack"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/bookstack"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh bookstack
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh bookstack
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = bookstack
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bookstack.svg
+"""
+
+##
+
+[[stack]]
+name = "budibase"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/budibase"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh budibase
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh budibase
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = budibase
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/budibase.svg
+"""
+
+##
+
+[[stack]]
+name = "changedetection"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/changedetection"
+file_paths = ["docker-compose.yml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh changedetection
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh changedetection
+"""
+environment = """
+  # VARIABLE = value
+  ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/changedetection.svg
+"""
+
+##
+
+[[stack]]
+name = "chatwoot"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/chatwoot"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh chatwoot
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh chatwoot
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = chatwoot
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/chatwoot.svg
+"""
+
+##
+
+[[stack]]
+name = "epicgames-claimer"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/epicgames-claimer"
+file_paths = ["docker-compose.yaml"]
+config_files = [
+  { path = "config/config.json" }
+]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh epicgames-claimer
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh epicgames-claimer
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = epicgames-claimer
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/epic-games.svg
+"""
+
+##
+
+[[stack]]
+name = "flaresolverr"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/flaresolverr"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh flaresolverr
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh flaresolverr
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = flaresolverr
+"""
+
+##
+
+[[stack]]
+name = "freshrss"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/freshrss"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh freshrss
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh freshrss
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = freshrss
+"""
+
+##
+
+[[stack]]
+name = "glance"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/glance"
+file_paths = ["docker-compose.yml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh glance
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh glance
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = glance
+ICON_LINK=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/glance.svg
+"""
+
+##
+
+[[stack]]
+name = "grafana-stack"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/grafana"
+file_paths = ["docker-compose.yml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh grafana
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh grafana
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = grafana
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/grafana.svg
+"""
+
+##
+
+[[stack]]
+name = "infisical"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/infisical"
+file_paths = ["docker-compose.yml"]
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+environment = """
+  # VARIABLE = value
+  ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/infisical.svg
+"""
+
+##
+
+[[stack]]
+name = "ipfs"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/ipfs"
+file_paths = ["docker-compose.yml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh ipfs
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh ipfs
+"""
+environment = """
+  # VARIABLE = value
+"""
+
+##
+
+[[stack]]
+name = "it-tools"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/it-tools"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+environment = """
+  # VARIABLE = value
+  ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/it-tools.svg
+"""
+
+##
+
+[[stack]]
+name = "komodo"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/komodo"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh komodo
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh komodo
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = komodo
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/komodo.svg
+"""
+
+##
+
+[[stack]]
+name = "n8n"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/n8n"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh n8n
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh n8n
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = n8n
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/n8n.svg
+"""
+
+##
+
+[[stack]]
+name = "node-exporter"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/node-exporter"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+"""
+environment = """
+  # VARIABLE = value
+  ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/node-exporter.svg
+"""
+
+##
+
+[[stack]]
+name = "notifications"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/notifications"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh notifications
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh notifications
+"""
+environment = """
+  # VARIABLE = value
+  ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ntfy.svg
+"""
+
+##
+
+[[stack]]
+name = "reactive-resume"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/reactive-resume"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh reactive-resume
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./cleanup-secrets-post-deploy.sh reactive-resume
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = reactive-resume
+"""
+
+##
+
+[[stack]]
+name = "secrets-included-template"
+template = true
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = 
+"""
+
+##
+
+[[stack]]
+name = "uptime-kuma"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/uptime-kuma"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh uptime-kuma
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh uptime-kuma
+"""
+environment = """
+  # VARIABLE = value
+  ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/uptime-kuma.svg
+"""
+
+##
+
+[[stack]]
+name = "vaultwarden"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/vaultwarden"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh vaultwarden
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh vaultwarden
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = vaultwarden
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/vaultwarden-light.svg
+"""
+
+##
+
+[[stack]]
+name = "wallos"
+[stack.config]
+server = "Local"
+linked_repo = "homelab"
+run_directory = "services/wallos"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh wallos
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh wallos
+"""
+environment = """
+  # VARIABLE = value
+  ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/wallos.png
+"""
+
+##
+
+[[repo]]
+name = "homelab"
+[repo.config]
+server = "Local"
+builder = "Local"
+git_account = "sergejbog"
+repo = "monkegobonkers/self-hosted"
+
+##
+
+[[procedure]]
+name = "Backup Core Database"
+description = "Triggers the Core database backup at the scheduled time."
+tags = ["system"]
+config.schedule = "Every day at 01:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "BackupCoreDatabase", execution.params = {}, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Global Auto Update"
+description = "Pulls and auto updates Stacks and Deployments using 'poll_for_updates' or 'auto_update'."
+tags = ["system"]
+config.schedule = "Every day at 03:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "GlobalAutoUpdate", execution.params = {}, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Pull-And-Deploy"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "PullRepo", execution.params.repo = "homelab", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Stage 2"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Redeploy-If-Changed", execution.params.args = {}, enabled = true }
+]
+
+##
+
+[[action]]
+name = "Redeploy-If-Changed"
+[action.config]
+file_contents = """
+var stacks = await komodo.read('ListStacks', {})
+
+var filteredStacks = stacks
+  .filter(stack => !stack.template && stack.name !== 'komodo' && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
+  .map(stack => [stack.id, stack.name])
+
+for (const [id, name] of filteredStacks) {
+  console.log(`Processing stack: ${name} (${id})`)
+  await komodo.execute('DeployStackIfChanged', { stack: id })
+}
+"""
+
+##
+
+[[action]]
+name = "infisical"
+[action.config]
+file_contents = """
+// Run actions using the pre initialized 'komodo' client.
+const version: Types.GetVersionResponse = await komodo.read('GetVersion', {});
+console.log('🦎 Komodo version:', version.version, '🦎\n');
+
+// Access arguments using the 'ARGS' object.
+console.log(ARGS);
+"""
+
+##
+
+[[builder]]
+name = "Local"
+[builder.config]
+type = "Server"
+params.server_id = "Local"
+
+##
+
+[[resource_sync]]
+name = "main-sync"
+[resource_sync.config]
+linked_repo = "homelab"
+resource_path = ["main.toml"]
+managed = true

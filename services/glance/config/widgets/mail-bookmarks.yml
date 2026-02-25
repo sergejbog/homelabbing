@@ -1,0 +1,19 @@
+- type: bookmarks
+  title: External Services
+  groups:
+    - title: GMails
+      color: 0 80 50
+      same-tab: true
+      links:
+        - title: Personal
+          url: https://mail.google.com/mail/u/1/
+          icon: si:gmail
+        - title: ${GLANCE_EMAIL_SECOND}
+          url: https://mail.google.com/mail/u/0/
+          icon: si:gmail
+        - title: ${GLANCE_EMAIL_THIRD}
+          url: https://mail.google.com/mail/u/4/
+          icon: si:gmail
+        - title: ${GLANCE_EMAIL_FOURTH}
+          url: https://mail.google.com/mail/u/2/
+          icon: si:gmail

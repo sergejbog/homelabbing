@@ -1,0 +1,66 @@
+- type: monitor
+  cache: 1m
+  title: Self Hosted Services
+  sites:
+    - title: Komodo
+      url: https://komodo.${DOMAIN_NAME}
+      icon: sh:komodo
+    - title: Coolify
+      url: https://coolify.${DOMAIN_NAME}
+      icon: si:coolify
+    - title: Traefik
+      url: https://traefik.${DOMAIN_NAME}
+      icon: di:traefik
+    - title: Uptime Kuma
+      url: https://uptime-kuma.${DOMAIN_NAME}
+      icon: sh:uptime-kuma
+    - title: Grafana
+      url: https://grafana.${DOMAIN_NAME}
+      icon: si:grafana
+
+    - title: IT Tools
+      url: https://tools.${DOMAIN_NAME}
+      icon: sh:it-tools
+    - title: Change Detection
+      url: https://change.${DOMAIN_NAME}
+      icon: sh:changedetection
+    - title: n8n
+      url: https://automation.${DOMAIN_NAME}
+      icon: sh:n8n
+    - title: Budibase
+      url: https://budibase.${DOMAIN_NAME}
+      icon: sh:budibase
+    - title: Backrest
+      url: https://backrest.${DOMAIN_NAME}
+      icon: sh:backrest
+    - title: Vaultwarden
+      url: https://vw.${DOMAIN_NAME}
+      icon: sh:vaultwarden-light
+    - title: Infisical
+      url: https://secrets.${DOMAIN_NAME}
+      icon: di:infisical
+    - title: Chatwoot
+      url: https://chatwoot.${DOMAIN_NAME}
+      icon: sh:chatwoot
+    - title: Ntfy
+      url: https://notifications.${DOMAIN_NAME}
+      icon: sh:ntfy
+    - title: Apprise
+      url: https://apprise.${DOMAIN_NAME}
+      icon: sh:apprise
+    - title: Wallos
+      url: https://wallos.${DOMAIN_NAME}
+      icon: sh:wallos
+    - title: Epic Games Claimer
+      url: https://epicgamesclaimer.${DOMAIN_NAME}
+      icon: si:epicgames
+    - title: Pterodactyl
+      url: https://pterodactyl-fc4gwc4kwg8kwg0cs800ggso.coolify-server.${DOMAIN_NAME}/auth/login
+      icon: si:pterodactyl
+- type: monitor
+  cache: 5m
+  title: Traefik Dashboard
+  sites:
+    - title: Traefik Dashboard
+      url: https://traefik.${DOMAIN_NAME}
+      icon: di:traefik

@@ -1,0 +1,51 @@
+name: loki-server
+volumes:
+  loki: {}
+
+services:
+  loki:
+    container_name: loki
+    user: "0:0"
+    networks:
+      - loki-network
+    image: grafana/loki:latest
+    command: [ "-config.file=/etc/loki/loki.yaml", "--target=all" ]
+    ports:
+      - "3100:3100"
+      - "9096:9096"
+    volumes:
+      - "./loki/loki.yaml:/etc/loki/loki.yaml"
+      - "loki:/loki"
+    # Enhanced resource limits for better server
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 4G
+          cpus: '2.0'
+    env_file: .env
+    # Optimized environment variables
+    environment:
+      - GOMEMLIMIT=7GiB
+      - GOMAXPROCS=4
+      - GOGC=100
+    restart: unless-stopped
+    # Health check
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+networks:
+  loki-network:
+    driver: bridge

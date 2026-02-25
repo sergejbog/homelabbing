@@ -1,0 +1,49 @@
+- name: Home
+  # Optionally, if you only have a single page you can hide the desktop navigation for a cleaner look
+  # hide-desktop-navigation: true
+  # head-widgets:
+
+  columns:
+    - size: small
+      widgets:
+        - $include: ./widgets/uptime-kuma.yml
+        - type: server-stats
+          servers:
+            - type: local
+              name: Hetzner Server
+            - type: remote
+              name: Ex44 Server
+              url: http://${SECONDARY_SERVER_IP}:${GLANCE_REMOTE_PORT}
+              token: ${GLANCE_REMOTE_TOKEN}
+        - $include: ./widgets/mail-bookmarks.yml
+
+    - size: full
+      widgets:
+        - type: html
+          source: |
+            <iframe src="https://grafana.${DOMAIN_NAME}/public-dashboards/${GRAFANA_PUBLIC_DASHBOARD_ID}"  frameborder="0" style="width:100%; height:400px; margin-bottom:20px;"></iframe>
+        - type: group
+          widgets:
+            - $include: ./widgets/monitor.yml
+
+            - $include: ./widgets/komodo.yml
+
+    - size: small
+      widgets:
+        - type: clock
+          hour-format: 24h
+        - type: markets
+          hide-header: true
+          markets:
+            - symbol: SPY
+              name: S&P 500
+            - symbol: BTC-USD
+              name: Bitcoin
+              chart-link: https://www.tradingview.com/chart/?symbol=INDEX:BTCUSD
+            - symbol: SOL-USD
+              name: Solana
+              chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:SOLUSD
+            - symbol: ETH-USD
+              name: Ethereum
+              chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:ETHUSD
+        - $include: ./widgets/external-bookmarks.yml

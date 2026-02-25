@@ -1,0 +1,36 @@
+services:
+  stirling-pdf:
+    container_name: stirling-pdf
+    image: docker.stirlingpdf.com/stirlingtools/stirling-pdf:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stirling-pdf.entrypoints=https"
+      - "traefik.http.routers.stirling-pdf.rule=Host(`pdf.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.stirling-pdf.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.stirling-pdf.tls=true"
+      - "traefik.http.routers.stirling-pdf.tls.certresolver=myresolver"
+      - "traefik.http.routers.stirling-pdf.service=stirling-pdf"
+      - "traefik.http.services.stirling-pdf.loadbalancer.server.port=8080"
+      - "traefik.docker.network=proxy"
+    volumes:
+      - data-trainingData:/usr/share/tessdata # Required for extra OCR languages
+      - data-extraConfigs:/configs
+      - data-customFiles:/customFiles/
+      - data-logs:/logs/
+      - data-pipeline:/pipeline/
+    environment:
+      - DISABLE_ADDITIONAL_FEATURES=false
+      - LANGS=en_GB
+    networks:
+      proxy:
+
+volumes:
+  data-trainingData: {}
+  data-extraConfigs: {}
+  data-customFiles: {}
+  data-logs: {}
+  data-pipeline: {}
+
+networks:
+  proxy:
+    external: true

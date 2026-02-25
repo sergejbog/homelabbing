@@ -1,0 +1,63 @@
+services:
+  web:
+    image: ghcr.io/karakeep-app/karakeep:${KARAKEEP_VERSION:-release}
+    restart: unless-stopped
+    container_name: karakeep-web
+    volumes:
+      # By default, the data is stored in a docker volume called "data".
+      # If you want to mount a custom directory, change the volume mapping to:
+      # - /path/to/your/directory:/data
+      - data:/data
+    env_file:
+      - .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.karakeep-web.entrypoints=https"
+      - "traefik.http.routers.karakeep-web.rule=Host(`karakeep.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.karakeep-web.tls.certresolver=myresolver"
+      - "traefik.http.routers.karakeep-web.service=karakeep-web"
+      - "traefik.http.services.karakeep-web.loadbalancer.server.port=3000"
+    environment:
+      MEILI_ADDR: http://karakeep-meilisearch:7700
+      BROWSER_WEB_URL: http://karakeep-chrome:9222
+
+      # You almost never want to change the value of the DATA_DIR variable.
+      # If you want to mount a custom directory, change the volume mapping above instead.
+      DATA_DIR: /data # DON'T CHANGE THIS
+    networks:
+      proxy:
+  chrome:
+    image: gcr.io/zenika-hub/alpine-chrome:123
+    restart: unless-stopped
+    container_name: karakeep-chrome
+    command:
+      - --no-sandbox
+      - --disable-gpu
+      - --disable-dev-shm-usage
+      - --remote-debugging-address=0.0.0.0
+      - --remote-debugging-port=9222
+      - --hide-scrollbars
+    networks:
+      proxy:
+  meilisearch:
+    container_name: karakeep-meilisearch
+    image: getmeili/meilisearch:v1.13.3
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilisearch:/meili_data
+    networks:
+      proxy:
+
+
+volumes:
+  meilisearch:
+  data:
+
+
+networks:
+  proxy:
+    external: true

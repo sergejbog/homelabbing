@@ -1,0 +1,31 @@
+services:
+  wallos:
+    container_name: wallos
+    image: bellamy/wallos:latest
+    environment:
+      TZ: 'America/Toronto'
+    volumes:
+      - 'db:/var/www/html/db'
+      - 'logos:/var/www/html/images/uploads/logos'
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wallos.entrypoints=https"
+      - "traefik.http.routers.wallos.rule=Host(`wallos.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.wallos.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.wallos.tls=true"
+      - "traefik.http.routers.wallos.tls.certresolver=myresolver"
+      - "traefik.http.routers.wallos.service=wallos"
+      - "traefik.http.services.wallos.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+    networks:
+      proxy:
+
+
+volumes:
+  db:
+  logos:
+
+networks:
+  proxy:
+    external: true

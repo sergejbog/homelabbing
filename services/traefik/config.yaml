@@ -1,0 +1,60 @@
+http:
+  middlewares:
+    admin-auth:
+      basicAuth:
+        users:
+          - '{{ env "BASIC_AUTH" }}'
+    AddForwardedHeader:
+      plugin:
+        AddForwardedHeader:
+          by: Traefik # The IP that traefik uses to communicate with the destination server.
+          forHeader: X-Real-Ip # Get the Client IP from this header.
+
+  routers:
+    pihole:
+      rule: Host(`pihole.{{ env "DOMAIN_NAME" }}`)
+      service: pihole
+      entryPoints:
+        - https
+      tls:
+        certResolver: myresolver
+    homeassistant:
+      rule: Host(`home-assistant.{{ env "DOMAIN_NAME" }}`)
+      service: homeassistant
+      entryPoints:
+        - https
+      tls:
+        certResolver: myresolver
+    firefly:
+      rule: Host(`finance.{{ env "DOMAIN_NAME" }}`)
+      service: firefly
+      entryPoints:
+        - https
+      tls:
+        certResolver: myresolver
+    fireflyimporter:
+      rule: Host(`finance-importer.{{ env "DOMAIN_NAME" }}`)
+      service: fireflyimporter
+      entryPoints:
+        - https
+      tls:
+        certResolver: myresolver
+
+  services:
+    pihole:
+      loadBalancer:
+        servers:
+          - url: http://{{ env "WIREGUARD_PEER_IP" }}:80
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: http://{{ env "WIREGUARD_PEER_IP" }}:8123 # Peer's WireGuard IP + container port
+    firefly:
+      loadBalancer:
+        servers:
+          - url: http://{{ env "WIREGUARD_PEER_IP" }}:8080 # Peer's WireGuard IP + container port
+    fireflyimporter:
+      loadBalancer:
+        servers:
+          - url: http://{{ env "WIREGUARD_PEER_IP" }}:8081 # Peer's WireGuard IP + container port
+

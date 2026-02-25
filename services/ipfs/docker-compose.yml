@@ -1,0 +1,41 @@
+services:
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: ipfs_node
+    ports:
+      - "4001:4001" # P2P swarm port (keep open to the internet)
+      - "4001:4001/udp" # P2P swarm port (UDP)
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ipfs_node.entrypoints=https"
+      - "traefik.http.routers.ipfs_node.rule=Host(`ipfsGateway.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.ipfs_node.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.ipfs_node.tls=true"
+      - "traefik.http.routers.ipfs_node.tls.certresolver=myresolver"
+      - "traefik.http.routers.ipfs_node.service=ipfs_node"
+      - "traefik.http.services.ipfs_node.loadbalancer.server.port=8080"
+      - "traefik.http.routers.ipfs_node_api.entrypoints=https"
+      - "traefik.http.routers.ipfs_node_api.rule=Host(`ipfsApi.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.ipfs_node_api.middlewares=AddForwardedHeader@file,admin-auth@file"
+      - "traefik.http.routers.ipfs_node_api.tls=true"
+      - "traefik.http.routers.ipfs_node_api.tls.certresolver=myresolver"
+      - "traefik.http.routers.ipfs_node_api.service=ipfs_node_api"
+      - "traefik.http.services.ipfs_node_api.loadbalancer.server.port=5001"
+      - "traefik.docker.network=proxy"
+    volumes:
+      - ipfs_staging:/export
+      - ipfs_data:/data/ipfs
+    restart: always
+    networks:
+      proxy:
+
+
+volumes:
+  ipfs_staging:
+  ipfs_data:
+
+
+networks:
+  proxy:
+    external: true

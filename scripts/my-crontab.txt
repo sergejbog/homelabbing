@@ -1,0 +1,2 @@
+# Backup Komodo database backups to Restic (runs 10 minutes after Komodo procedure)
+10 1 * * * /etc/komodo/repos/homelab/scripts/backup-manager.sh backup-all >> /var/log/backup-komodo.log 2>&1

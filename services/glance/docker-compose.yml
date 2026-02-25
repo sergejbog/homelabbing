@@ -1,0 +1,28 @@
+services:
+  glance:
+    container_name: glance
+    image: glanceapp/glance
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.glance.entrypoints=https"
+      - "traefik.http.routers.glance.rule=Host(`glance.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.glance.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.glance.tls=true"
+      - "traefik.http.routers.glance.tls.certresolver=myresolver"
+      - "traefik.http.routers.glance.service=glance"
+      - "traefik.http.services.glance.loadbalancer.server.port=8080"
+      - "traefik.docker.network=proxy"
+    volumes: 
+      - ./config:/app/config
+      - ./assets:/app/assets
+      - /etc/localtime:/etc/localtime:ro
+      # Optionally, also mount docker socket if you want to use the docker containers widget
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      proxy:
+    env_file: .env
+
+networks:
+  proxy:
+    external: true

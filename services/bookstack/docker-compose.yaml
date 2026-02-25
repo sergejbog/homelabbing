@@ -1,0 +1,54 @@
+services:
+  bookstack:
+    image: lscr.io/linuxserver/bookstack:latest
+    container_name: bookstack
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - APP_URL=https://wiki.${DOMAIN_NAME}
+      - APP_KEY=${BOOKSTACK_APP_KEY}
+      - APP_PROXIES=*
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USERNAME=bookstack
+      - DB_PASSWORD=${BOOKSTACK_DB_PASSWORD}
+      - DB_DATABASE=bookstack
+    volumes:
+      - config:/config
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bookstack.rule=Host(`wiki.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.bookstack.tls.certresolver=myresolver"
+      - "traefik.http.routers.bookstack.entrypoints=https"
+      - "traefik.http.services.bookstack.loadbalancer.server.port=80"
+      - "traefik.http.routers.bookstack.middlewares=AddForwardedHeader@file"
+      # Apply both middlewares (and the existing sslheader middleware)
+    restart: unless-stopped
+    networks:
+      proxy:
+  mariadb:
+    image: mariadb:lts
+    container_name: mariadb
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - MYSQL_ROOT_PASSWORD=${BOOKSTACK_DB_PASSWORD}
+      - MYSQL_DATABASE=bookstack #optional
+      - MYSQL_USER=bookstack #optional
+      - MYSQL_PASSWORD=${BOOKSTACK_DB_PASSWORD} #optional
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      proxy:
+
+
+volumes:
+  config: {}
+  mariadb_data: {}
+
+networks:
+  proxy:
+    external: true

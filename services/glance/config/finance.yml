@@ -1,0 +1,21 @@
+- name: Finance
+  # Optionally, if you only have a single page you can hide the desktop navigation for a cleaner look
+  # hide-desktop-navigation: true
+  head-widgets:
+    - type: markets
+      hide-header: true
+      markets:
+        - symbol: SPY
+          name: S&P 500
+        - symbol: NVDA
+          name: NVIDIA
+        - symbol: BTC-USD
+          name: Bitcoin
+          chart-link: https://www.tradingview.com/chart/?symbol=INDEX:BTCUSD
+        - symbol: SOL-USD
+          name: Solana
+          chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:SOLUSD
+        - symbol: ETH-USD
+          name: Ethereum
+          chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:ETHUSD
+  columns:

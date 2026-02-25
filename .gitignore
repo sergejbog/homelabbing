@@ -1,0 +1,16 @@
+.env
+n8n_storage
+n8n-nodes-puppeteer
+n8n_backups
+services/traefik/letsencrypt
+services/traefik/logs
+mariadb-init.sql
+services/epicgames-claimer/config/config.json
+services/epicgames-claimer/config/device-auths.json
+services/epicgames-claimer/config/*-cookies.json
+homepage.log
+.db.env
+.importer.env
+.env.icon
+.idea
+.claude

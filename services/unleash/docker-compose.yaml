@@ -1,0 +1,42 @@
+services:
+
+  web:
+    image: unleashorg/unleash-server:latest
+    container_name: unleash
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.unleash.entrypoints=https"
+      - "traefik.http.routers.unleash.rule=Host(`unleash.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.unleash.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.unleash.tls=true"
+      - "traefik.http.routers.unleash.tls.certresolver=myresolver"
+      - "traefik.http.routers.unleash.service=unleash"
+      - "traefik.http.services.unleash.loadbalancer.server.port=4242"
+      - "traefik.docker.network=proxy"
+    env_file: .env
+    networks:
+      proxy:
+    depends_on:
+      db-unleash:
+        condition: service_healthy
+  db-unleash:
+    image: postgres:15
+    container_name: db-unleash
+    env_file: .env
+    networks:
+      proxy:
+    volumes:
+      - db_storage:/var/lib/postgresql/data
+    healthcheck:
+      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+networks:
+  proxy:
+    external: true
+
+
+volumes:
+  db_storage: {}

@@ -1,0 +1,39 @@
+version: "3.8"
+services:
+  backrest:
+    image: garethgeorge/backrest:latest
+    container_name: backrest
+    hostname: backrest
+    networks:
+      - proxy
+    env_file: .env
+    volumes:
+      - backrest_data:/data
+      - backrest_config:/config
+      - backrest_cache:/cache
+      - backrest_tmp:/tmp
+      - backrest_rclone:/root/.config/rclone # Mount for rclone config (
+      - ../:/userdata
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backrest.entrypoints=https"
+      - "traefik.http.routers.backrest.rule=Host(`backrest.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.backrest.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.backrest.tls=true"
+      - "traefik.http.routers.backrest.tls.certresolver=myresolver"
+      - "traefik.http.routers.backrest.service=backrest"
+      - "traefik.http.services.backrest.loadbalancer.server.port=9898"
+      - "traefik.docker.network=proxy"
+    restart: unless-stopped
+
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  backrest_data: {}
+  backrest_config: {}
+  backrest_cache: {}
+  backrest_tmp: {}
+  backrest_rclone: {}

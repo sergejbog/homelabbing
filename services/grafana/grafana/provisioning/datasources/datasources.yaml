@@ -1,0 +1,54 @@
+apiVersion: 1
+
+datasources:
+  - name: Loki
+    type: loki
+    access: proxy
+    uid: loki
+    url: http://${LOKI_HOST}:3100
+    readOnly: false
+    editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: tempo
+          matcherRegex: ^trace_id
+          matcherType: label
+          name: Trace ID
+          url: "$${__value.raw}"
+          urlDisplayLabel: View Trace
+          datasourceName: Tempo
+
+  - name: Tempo
+    type: tempo
+    access: proxy
+    readOnly: false
+    editable: true
+    uid: tempo
+    url: http://tempo:3200
+    jsonData:
+      nodeGraph:
+        enabled: true
+      serviceMap:
+        datasourceUid: "Mimir"
+      tracesToLogsV2:
+        datasourceUid: "loki"
+        spanStartTimeShift: "-1h"
+        spanEndTimeShift: "1h"
+        filterByTraceID: false
+        filterBySpanID: false
+        customQuery: true
+        query: "{$${__tags}} | trace_id = `$${__trace.traceId}`"
+
+  - name: Mimir
+    type: prometheus
+    readOnly: false
+    editable: true
+    access: proxy
+    uid: mimir
+    url: http://mimir:9009/prometheus
+    jsonData:
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo
+          name: traceID
+      httpMethod: POST
+      timeInterval: "2s"

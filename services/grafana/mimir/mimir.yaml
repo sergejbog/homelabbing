@@ -1,0 +1,49 @@
+# For more information on this configuration, see the complete reference guide at
+# https://grafana.com/docs/mimir/latest/references/configuration-parameters/
+
+# Disable multi-tenancy and restrict to single tenant.
+multitenancy_enabled: false
+
+# Run only the basic components needed
+target: all
+
+ingester:
+  ring:
+    kvstore:
+      store: inmemory
+    replication_factor: 1
+
+server:
+  http_listen_port: 9009
+  log_level: info
+
+# Limits configuration to allow out-of-order samples
+limits:
+  out_of_order_time_window: 10m # Allow samples up to 10 minutes out of order
+  max_global_series_per_user: 0 # Disable series limit
+  max_global_series_per_metric: 0 # Disable per-metric series limit
+  compactor_blocks_retention_period: 30d # Retain blocks for 90 days
+  ingestion_rate: 50000 # Per-tenant ingestion rate limit
+  ingestion_burst_size: 1000000 # Per-tenant burst size
+
+# Use local storage instead of S3 to reduce bucket-related metrics
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /mimir/blocks
+
+# Configure ruler for alerting and recording rules
+ruler:
+  enable_api: true
+  rule_path: /mimir/rules
+
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /mimir/ruler
+
+# Configure compactor to run less frequently
+compactor:
+  block_ranges: [2h, 12h, 24h]
+  cleanup_interval: 15m
+  compaction_interval: 30m

@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: reactive_resume_postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    networks:
+      - proxy
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  printer:
+    image: ghcr.io/browserless/chromium:latest
+    restart: unless-stopped
+    container_name: printer
+    env_file: .env
+    environment:
+      - QUEUED=10
+      - HEALTH=true
+      - CONCURRENT=5
+      # Optional: Set a token for authentication
+      # - TOKEN=your-secret-token
+    networks:
+      - proxy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/pressure?token=your-secret-token" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  reactive_resume:
+    image: amruthpillai/reactive-resume:latest
+    restart: unless-stopped
+    container_name: reactive_resume
+    env_file: .env
+    environment:
+      - APP_URL=https://resume.${DOMAIN_NAME}
+      - PRINTER_APP_URL=http://reactive_resume:3000
+      - PRINTER_ENDPOINT=ws://printer:3000
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@reactive_resume_postgres:5432/postgres
+      - AUTH_SECRET=${AUTH_SECRET}
+      # Add other optional env vars as needed (SMTP, S3, OAuth, etc.)
+    volumes:
+      - reactive_resume_data:/app/data
+    networks:
+      - proxy
+    depends_on:
+      postgres:
+        condition: service_healthy
+      printer:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.reactive-resume.entrypoints=https"
+      - "traefik.http.routers.reactive-resume.rule=Host(`resume.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.reactive-resume.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.reactive-resume.tls=true"
+      - "traefik.http.routers.reactive-resume.tls.certresolver=myresolver"
+      - "traefik.http.routers.reactive-resume.service=reactive-resume"
+      - "traefik.http.services.reactive-resume.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  postgres_data:
+  reactive_resume_data:

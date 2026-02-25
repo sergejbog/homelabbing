@@ -1,0 +1,22 @@
+- type: bookmarks
+  title: External Services
+  groups:
+    - title: General
+      color: 220 70 50
+      same-tab: true
+      links:
+        - title: YouTube
+          url: https://youtube.com
+          icon: si:youtube
+        - title: Google
+          url: https://google.com
+          icon: si:google
+        - title: Perplexity
+          url: https://perplexity.ai
+          icon: si:perplexity
+        - title: Facebook
+          url: https://facebook.com
+          icon: si:facebook
+        - title: Hytale New Mods
+          url: https://www.curseforge.com/hytale/search?class=mods&pageSize=20&sortBy=latest+update
+          icon: si:curseforge

@@ -1,0 +1,63 @@
+services:
+  backend:
+    container_name: infisical-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      infisical-redis:
+        condition: service_started
+    image: infisical/infisical:latest-postgres
+    pull_policy: always
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.infisical.entrypoints=https"
+      - "traefik.http.routers.infisical.rule=Host(`secrets.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.infisical.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.infisical.tls=true"
+      - "traefik.http.routers.infisical.tls.certresolver=myresolver"
+      - "traefik.http.routers.infisical.service=infisical"
+      - "traefik.http.services.infisical.loadbalancer.server.port=8080"
+      - "traefik.docker.network=proxy"
+    environment:
+      - NODE_ENV=production
+    networks:
+      proxy:
+
+  infisical-redis:
+    image: redis
+    container_name: infisical-redis
+    env_file: .env
+    restart: always
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    networks:
+      proxy:
+    volumes:
+      - redis_data:/data
+
+  db:
+    container_name: infisical-db
+    image: postgres:14-alpine
+    restart: always
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      proxy:
+    healthcheck:
+      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
+      interval: 5s
+      timeout: 10s
+      retries: 10
+
+volumes:
+  pg_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  proxy:
+    external: true

@@ -1,0 +1,167 @@
+# Backup Configuration for Self-Hosted Services
+# This file defines backup strategies for all services
+# Priority levels: critical (4x daily), high (2x daily), medium (1x daily), low (weekly)
+
+services:
+  # === CRITICAL SERVICES ===
+
+  infisical:
+    priority: critical
+    type: postgres
+    container: infisical-db
+    database: infisical
+    user: infisical
+    compose_file: services/infisical/docker-compose.yml
+    notes: "Contains all secrets - backup multiple times daily"
+    retention:
+      daily: 14
+      weekly: 8
+      monthly: 24
+
+  vaultwarden:
+    priority: critical
+    type: volume
+    volumes:
+      - vaultwarden_vw-data
+    compose_file: services/vaultwarden/docker-compose.yaml
+    notes: "Password manager - SQLite in volume"
+    retention:
+      daily: 14
+      weekly: 8
+      monthly: 24
+
+  # === HIGH PRIORITY SERVICES ===
+
+  n8n:
+    priority: high
+    type: postgres
+    container: n8n-postgres
+    database: n8n
+    user: postgres
+    compose_file: services/n8n/docker-compose.yaml
+    volumes_also:
+      - n8n_root-folder
+    notes: "Workflow automation - backup DB + storage directory"
+
+  bookstack:
+    priority: high
+    type: mariadb
+    container: mariadb
+    database: bookstack
+    user: bookstack
+    compose_file: services/bookstack/docker-compose.yml
+    notes: "Documentation wiki - uses shared MariaDB"
+    volumes_also:
+      - bookstack_config
+
+  chatwoot:
+    priority: high
+    type: postgres
+    container: chatwoot-postgres
+    database: chatwoot
+    user: postgres
+    compose_file: services/chatwoot/docker-compose.yml
+    volumes_also:
+      - chatwoot_chatwoot-storage_data
+    notes: "Customer support conversations"
+
+  # === MEDIUM PRIORITY SERVICES ===
+
+  budibase:
+    priority: medium
+    type: volume
+    volumes:
+      - budibase_couchdb3_data
+      - budibase_minio_data
+      - budibase_redis_data
+    compose_file: services/budibase/docker-compose.yml
+    notes: "Low-code platform - requires cold backup (service down)"
+
+  notifications:
+    priority: medium
+    type: volume
+    volumes:
+      - notifications_ntfy-data
+      - notifications_config
+      - notifications_plugin
+      - notifications_attach
+    compose_file: services/notifications/docker-compose.yaml
+    notes: "Apprise and ntfy data"
+
+  uptime-kuma:
+    priority: medium
+    type: volume
+    volumes:
+      - uptime-kuma_data
+    compose_file: services/uptime-kuma/docker-compose.yaml
+    notes: "Uptime monitoring data"
+
+  wallos:
+    priority: medium
+    type: volume
+    volumes:
+      - wallos_logos
+      - wallos_db
+    compose_file: services/wallos/docker-compose.yaml
+    notes: "Uptime monitoring data"
+  # unleash:
+  #   priority: medium
+  #   type: postgres
+  #   container: db-unleash
+  #   database: unleash
+  #   user: unleash
+  #   compose_file: services/unleash/docker-compose.yml
+  #   notes: "Feature flags"
+
+  # === LOW PRIORITY SERVICES ===
+
+  # grafana:
+  #   priority: low
+  #   type: volume
+  #   volumes:
+  #     - main-data
+  #     - loki
+  #     - tempo-data
+  #   compose_file: services/grafana/docker-compose.yml
+  #   notes: "Monitoring stack - metrics can be rebuilt"
+
+  # === BACKUP INFRASTRUCTURE ===
+
+  komodo:
+    priority: critical
+    type: directory
+    directory: /etc/komodo/backups
+    compose_file: services/komodo/docker-compose.yaml
+    notes: "Komodo database backups - critical system configuration"
+
+  # backrest:
+  #   priority: high
+  #   type: volume
+  #   volumes:
+  #     - backrest_config
+  #     - backrest_rclone
+  #   compose_file: services/backrest/docker-compose.yml
+  #   notes: "Backup UI configuration - critical for restore"
+
+# Default Retention Policies
+retention:
+  critical:
+    daily: 14
+    weekly: 8
+    monthly: 24
+    yearly: 3
+  high:
+    daily: 10
+    weekly: 6
+    monthly: 12
+    yearly: 2
+  medium:
+    daily: 7
+    weekly: 4
+    monthly: 6
+    yearly: 1
+  low:
+    daily: 3
+    weekly: 2
+    monthly: 3
+    yearly: 0

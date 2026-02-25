@@ -1,0 +1,7 @@
+base-url: "https://notifications.${DOMAIN_NAME}"
+cache-file: "/var/cache/ntfy/cache.db"
+attachment-cache-dir: "/var/cache/ntfy/attachments"
+behind-proxy: true
+auth-file: "/var/lib/ntfy/user.db"
+auth-users:
+  - "serbog:$2a$12$WYqbnW6YXp5T03ca65hn2e0LeEWp1gGIfIVQFNefE2yEl8tfvxQF.:admin"

@@ -1,0 +1,124 @@
+name: grafana-stack
+volumes:
+  tempo-data: {}
+  cache: {}
+  loki: {}
+  mimir: {}
+  main-data: {}
+
+services:
+  opentelemetry-collector:
+    networks:
+      - proxy
+    env_file: .env
+    image: otel/opentelemetry-collector-contrib:latest
+    ports:
+      - "12347:12345"
+      - "12348:12348"
+      - "6832:6832"
+      - "55679:55679"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./otel/otel-collector-config.yaml:/etc/otel-collector-config.yml
+    command: [ "--config=/etc/otel-collector-config.yml" ]
+  grafana:
+    user: "0"
+    networks:
+      - proxy
+    image: grafana/grafana:latest
+    container_name: grafana
+    env_file: .env
+    volumes:
+      - "./grafana/provisioning:/etc/grafana/provisioning"
+      - 'main-data:/var/lib/grafana'
+    environment:
+      - GF_FEATURE_TOGGLES_ENABLE=flameGraph traceqlSearch traceQLStreaming correlations metricsSummary traceqlEditor traceToMetrics traceToProfiles datatrails logsContextDatasourceUi
+      - GF_INSTALL_PLUGINS=grafana-lokiexplore-app,grafana-exploretraces-app,grafana-pyroscope-app
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_DISABLE_LOGIN_FORM=false
+      - GF_SERVER_HTTP_PORT=3000
+      - GF_SERVER_DOMAIN=grafana.${DOMAIN_NAME}
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN_NAME}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.entrypoints=https"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.grafana.tls.certresolver=myresolver"
+      - "traefik.http.routers.grafana.service=grafana"
+      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - "traefik.http.routers.grafana.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.grafana.tls=true"
+  tempo:
+    image: grafana/tempo:main-8b5ef72
+    container_name: tempo
+    user: "0:0"
+    env_file: .env
+    networks:
+      - proxy
+    ports:
+      - "3200:3200"
+      - "9411:9411"
+      - "55680:55680"
+      - "55681:55681"
+      - "14250:14250"
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    volumes:
+      - "./tempo/tempo.yaml:/etc/tempo.yaml"
+      - tempo-data:/data/tempo
+
+  # The Loki service stores logs sent to it, and takes queries from Grafana
+  # to visualise those logs.
+  # loki:
+  #   container_name: loki
+  #   user: "0:0"
+  #   networks:
+  #     - proxy
+  #   image: grafana/loki:latest
+  #   command: [ "-config.file=/etc/loki/loki.yaml", "--target=all" ]
+  #   ports:
+  #     - "3100:3100"
+  #   volumes:
+  #     - "./loki/loki.yaml:/etc/loki/loki.yaml"
+  #     - "loki:/loki"
+  #   # Resource limits for better performance
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 4G
+  #         cpus: '2.0'
+  #       reservations:
+  #         memory: 2G
+  #         cpus: '1.0'
+  #   # Environment variables for optimization
+  #   environment:
+  #     - GOMEMLIMIT=3GiB
+  #     - GOMAXPROCS=2
+
+  mimir:
+    container_name: mimir
+    image: grafana/mimir:latest
+    command: [ "-ingester.native-histograms-ingestion-enabled=true", "-config.file=/etc/mimir.yaml" ]
+    networks:
+      - proxy
+    ports:
+      - "9009:9009"
+    volumes:
+      - "./mimir/mimir.yaml:/etc/mimir.yaml"
+      - mimir:/mimir
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    networks:
+      - proxy
+    volumes:
+      - cache:/data
+
+networks:
+  proxy:
+    external: true

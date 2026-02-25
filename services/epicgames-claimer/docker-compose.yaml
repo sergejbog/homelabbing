@@ -1,0 +1,27 @@
+version: '3.9'
+services:
+  vogler:
+    image: ghcr.io/claabs/epicgames-freegames-node:latest
+    pull_policy: always
+    env_file: .env
+    volumes:
+      - './config:/usr/app/config'
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.epicgamesclaimer.entrypoints=https"
+      - "traefik.http.routers.epicgamesclaimer.rule=Host(`epicgamesclaimer.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.epicgamesclaimer.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.epicgamesclaimer.tls=true"
+      - "traefik.http.routers.epicgamesclaimer.tls.certresolver=myresolver"
+      - "traefik.http.routers.epicgamesclaimer.service=epicgamesclaimer"
+      - "traefik.http.services.epicgamesclaimer.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+    tty: true
+    stdin_open: true
+    networks:
+      proxy:
+
+
+networks:
+  proxy:
+    external: true

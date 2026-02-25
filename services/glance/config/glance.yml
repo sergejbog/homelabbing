@@ -1,0 +1,20 @@
+server:
+  assets-path: /app/assets
+
+theme:
+  background-color: 225 14 15
+  primary-color: 157 47 65
+  contrast-multiplier: 1.1
+  custom-css-file: /assets/user.css
+
+pages:
+  # It's not necessary to create a new file for each page and include it, you can simply
+  # put its contents here, though multiple pages are easier to manage when separated
+  - $include: home.yml
+  # - $include: finance.yml
+
+auth:
+  secret-key: ${GLANCE_SECRET_KEY}
+  users:
+    admin:
+      password-hash: ${GLANCE_ADMIN_PASSWORD_HASH}

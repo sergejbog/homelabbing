@@ -1,0 +1,66 @@
+services:
+  ntfy:
+    image: 'binwiederhier/ntfy:latest'
+    restart: 'unless-stopped'
+    command:
+      - serve
+    container_name: "ntfy"
+    environment:
+      - TZ=UTC
+      - NTFY_AUTH_DEFAULT_ACCESS=deny-all
+      - NTFY_ENABLE_LOGIN=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ntfy.entrypoints=https"
+      - "traefik.http.routers.ntfy.rule=Host(`notifications.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.ntfy.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.ntfy.tls=true"
+      - "traefik.http.routers.ntfy.tls.certresolver=myresolver"
+      - "traefik.http.routers.ntfy.service=ntfy"
+      - "traefik.http.services.ntfy.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+    volumes:
+      - 'ntfy-cache:/var/cache/ntfy'
+      - 'ntfy-data:/var/lib/ntfy'
+      - './ntfy-server.yml:/etc/ntfy/server.yml:ro'
+    networks:
+      proxy:
+
+
+  apprise:
+    image: caronc/apprise:latest
+    container_name: apprise
+    environment:
+      APPRISE_STATEFUL_MODE: simple
+      APPRISE_WORKER_COUNT: "1"
+      APPRISE_ADMIN: "y"
+      LOG_LEVEL: "info"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.apprise.entrypoints=https"
+      - "traefik.http.routers.apprise.rule=Host(`apprise.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.apprise.middlewares=AddForwardedHeader@file,admin-auth@file"
+      - "traefik.http.routers.apprise.tls=true"
+      - "traefik.http.routers.apprise.tls.certresolver=myresolver"
+      - "traefik.http.routers.apprise.service=apprise"
+      - "traefik.http.services.apprise.loadbalancer.server.port=8000"
+      - "traefik.docker.network=proxy"
+    volumes:
+      - config:/config
+      - plugin:/plugin
+      - attach:/attach
+    networks:
+      proxy:
+
+
+volumes:
+  ntfy-data:
+  ntfy-cache:
+  config:
+  plugin:
+  attach:
+
+
+networks:
+  proxy:
+    external: true
