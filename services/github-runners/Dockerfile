@@ -2,14 +2,17 @@ FROM youssefbrr/github-actions:latest
 
 USER root
 
-# Install git + basic tools missing from base image
+# Install prerequisites + add git PPA for a modern version (Ubuntu 20.04 ships git 2.25, too old for partial clone)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
+    software-properties-common \
     wget \
     unzip \
     ca-certificates \
     gnupg \
     lsb-release \
+    && add-apt-repository ppa:git-core/ppa -y \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI + Buildx plugin (for docker/build-push-action)
