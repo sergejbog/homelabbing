@@ -314,6 +314,7 @@ server = "Local"
 linked_repo = "homelabbing"
 run_directory = "services/infisical"
 file_paths = ["docker-compose.yml"]
+env_file_path = ".env.icon"
 pre_deploy.command = """
   # Add multiple commands on new lines. Supports comments.
 """
