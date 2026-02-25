@@ -102,6 +102,14 @@ services:
     compose_file: services/uptime-kuma/docker-compose.yaml
     notes: "Uptime monitoring data"
 
+  grocy:
+    priority: medium
+    type: volume
+    volumes:
+      - grocy_config
+    compose_file: services/grocy/docker-compose.yaml
+    notes: "Personal inventory management - config volume with SQLite DB"
+
   wallos:
     priority: medium
     type: volume

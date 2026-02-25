@@ -7,7 +7,7 @@ services:
       - PGID=1000
       - TZ=CET
     volumes:
-      - /path/to/grocy/config:/config
+      - grocy_config:/config
     ports:
       - 9283:80
     labels:
@@ -25,3 +25,6 @@ services:
 networks:
   proxy:
     external: true
+
+volumes:
+  grocy_config:
