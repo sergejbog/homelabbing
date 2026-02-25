@@ -13,14 +13,20 @@ ENV_FILE="${SERVICE_PATH}/.env"
 
 echo "🔐 Fetching secrets from Infisical for ${SERVICE_NAME}..."
 
-# Check if infisical is installed
-if ! command -v infisical &> /dev/null; then
-    # Install Infisical CLI
-    echo "Infisical CLI not found. Installing..."
-    # Run setup from /tmp to avoid .s3_setup_* temp files polluting the repo
-    (cd /tmp && curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash)
-    apt-get update && apt-get install -y infisical
+# Use infisical from the persistent shared mount (/etc/komodo/bin),
+# which is available inside the periphery container via the volume mount.
+# Falls back to system PATH if available.
+INFISICAL_BIN="/etc/komodo/bin/infisical"
+if [ ! -x "$INFISICAL_BIN" ]; then
+    if command -v infisical &> /dev/null; then
+        INFISICAL_BIN="infisical"
+    else
+        echo "❌ Infisical CLI not found at $INFISICAL_BIN or in PATH"
+        echo "Install it on the host: cp \$(which infisical) /etc/komodo/bin/infisical"
+        exit 1
+    fi
 fi
+echo "Using infisical at: $INFISICAL_BIN"
 
 # Load Infisical credentials from .env file
 if [ -f "${SCRIPT_DIR}/.env" ]; then
@@ -38,7 +44,7 @@ fi
 
 # Authenticate with Infisical using universal auth
 echo "🔑 Authenticating with Infisical..."
-export INFISICAL_TOKEN=$(infisical login \
+export INFISICAL_TOKEN=$($INFISICAL_BIN login \
     --method=universal-auth \
     --client-id="${INFISICAL_CLIENT_ID}" \
     --client-secret="${INFISICAL_CLIENT_SECRET}" \
@@ -55,12 +61,12 @@ echo "✅ Authentication successful"
 # Service-specific secrets are appended after, so they override root values if keys overlap.
 cd "${SERVICE_PATH}"
 
-infisical export --env="${ENVIRONMENT}" \
+$INFISICAL_BIN export --env="${ENVIRONMENT}" \
     --projectId="${INFISICAL_PROJECT_ID}" \
     --path="/" \
     --format=dotenv > "${ENV_FILE}"
 
-infisical export --env="${ENVIRONMENT}" \
+$INFISICAL_BIN export --env="${ENVIRONMENT}" \
     --projectId="${INFISICAL_PROJECT_ID}" \
     --path="/${SERVICE_NAME}" \
     --format=dotenv >> "${ENV_FILE}"
