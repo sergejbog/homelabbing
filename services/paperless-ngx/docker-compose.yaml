@@ -1,0 +1,58 @@
+services:
+  broker:
+    image: docker.io/library/redis:8
+    restart: unless-stopped
+    networks:
+      proxy:
+    volumes:
+      - redisdata:/data
+  paperless-db:
+    image: docker.io/library/postgres:18
+    restart: unless-stopped
+    container_name: paperless-db
+    env_file:
+      - .env
+    networks:
+      proxy:
+    volumes:
+      - pgdata:/var/lib/postgresql
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+  webserver:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    restart: unless-stopped
+    container_name: paperless
+    depends_on:
+      - paperless-db
+      - broker
+    volumes:
+      - data:/usr/src/paperless/data
+      - media:/usr/src/paperless/media
+      - ./export:/usr/src/paperless/export
+      - ./consume:/usr/src/paperless/consume
+    env_file: .env
+    networks:
+      proxy:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.paperless.entrypoints=https"
+      - "traefik.http.routers.paperless.rule=Host(`paperless.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.paperless.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.paperless.tls=true"
+      - "traefik.http.routers.paperless.tls.certresolver=myresolver"
+      - "traefik.http.routers.paperless.service=paperless"
+      - "traefik.http.services.paperless.loadbalancer.server.port=8000"
+      - "traefik.docker.network=proxy"
+    environment:
+      PAPERLESS_REDIS: redis://broker:6379
+      PAPERLESS_DBHOST: paperless-db
+volumes:
+  data:
+  media:
+  pgdata:
+  redisdata:
+
+networks:
+  proxy:
+    external: true
