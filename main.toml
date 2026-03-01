@@ -391,6 +391,30 @@ environment = """
 ##
 
 [[stack]]
+name = "karakeep"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/karakeep"
+file_paths = ["docker-compose.yml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh karakeep
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh karakeep
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = karakeep
+"""
+
+##
+
+[[stack]]
 name = "komodo"
 [stack.config]
 server = "Local"
