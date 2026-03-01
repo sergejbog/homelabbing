@@ -510,6 +510,30 @@ environment = """
 ##
 
 [[stack]]
+name = "paperless-ngx"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/paperless-ngx"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh paperless-ngx
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh paperless-ngx
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = paperless-ngx
+"""
+
+##
+
+[[stack]]
 name = "reactive-resume"
 [stack.config]
 server = "Local"
