@@ -15,7 +15,7 @@
         - symbol: SOL-USD
           name: Solana
           chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:SOLUSD
-        - symbol: JUP-USD
+        - symbol: JUP29210-USD
           name: Jupiter
-          chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:JUPUSD
+          chart-link: https://www.tradingview.com/chart/?symbol=BINANCE:JUPUSDT
   columns:
