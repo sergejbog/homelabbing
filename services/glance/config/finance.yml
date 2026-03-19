@@ -15,7 +15,7 @@
         - symbol: SOL-USD
           name: Solana
           chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:SOLUSD
-        - symbol: ETH-USD
-          name: Ethereum
-          chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:ETHUSD
+        - symbol: JUP-USD
+          name: Jupiter
+          chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:JUPUSD
   columns:
