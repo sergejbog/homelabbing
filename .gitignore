@@ -14,3 +14,4 @@ homepage.log
 .env.icon
 .idea
 .claude
+services/n8n/workflows
