@@ -10,6 +10,7 @@ services:
     networks:
       proxy:
 
+
   tandoor:
     restart: always
     container_name: tandoor
@@ -32,7 +33,7 @@ services:
       - staticfiles:/opt/recipes/staticfiles
       - mediafiles:/opt/recipes/mediafiles
     depends_on:
-      - db_recipes
+      - tandoor_db
 
 volumes:
   tandoor_db_data:
