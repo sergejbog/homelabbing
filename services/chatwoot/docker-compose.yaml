@@ -2,7 +2,7 @@ version: '3'
 
 x-shared:
   base: &base
-    image: chatwoot/chatwoot:v4.11.2
+    image: chatwoot/chatwoot:latest
     env_file: .env ## Change this file for customized env variables
     volumes:
       - chatwoot-storage_data:/app/storage
