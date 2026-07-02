@@ -919,9 +919,7 @@ config.webhook_secret = "45mtKL7q62pMcIRrX3Oqnnz0H7URZlKh"
 name = "Stage 1"
 enabled = true
 executions = [
-  { execution.type = "PullRepo", execution.params.repo = "homelabbing", enabled = true },
-  { execution.type = "PullRepo", execution.params.repo = "crypto-investor-help", enabled = true },
-  { execution.type = "PullRepo", execution.params.repo = "job-automation", enabled = true }
+  { execution.type = "PullRepo", execution.params.repo = "homelabbing", enabled = true }
 ]
 
 [[procedure.config.stage]]
@@ -929,6 +927,46 @@ name = "Stage 2"
 enabled = true
 executions = [
   { execution.type = "RunAction", execution.params.action = "Redeploy-If-Changed", execution.params.args = {}, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Pull-And-Deploy-Crypto"
+config.webhook_secret = "45mtKL7q62pMcIRrX3Oqnnz0H7URZlKh"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "PullRepo", execution.params.repo = "crypto-investor-help", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Stage 2"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Deploy-When-Pushed-Crypto", execution.params.args = {}, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Pull-And-Deploy-Jobs"
+config.webhook_secret = "45mtKL7q62pMcIRrX3Oqnnz0H7URZlKh"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "PullRepo", execution.params.repo = "job-automation", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Stage 2"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Deploy-When-Pushed-Jobs", execution.params.args = {}, enabled = true }
 ]
 
 ##
@@ -996,17 +1034,43 @@ try {
 ##
 
 [[action]]
+name = "Deploy-When-Pushed-Crypto"
+[action.config]
+file_contents = """
+  const res = await komodo.execute('DeployStack', { stack: "6a468bd0fd992e0cbc3240e4" })
+  console.log(res);
+"""
+
+##
+
+[[action]]
+name = "Deploy-When-Pushed-Jobs"
+[action.config]
+file_contents = """
+  const res = await komodo.execute('DeployStack', { stack: "6a3e3dfbfd992e0cbc31253f" })
+  console.log(res);
+"""
+
+##
+
+[[action]]
 name = "Redeploy-If-Changed"
 [action.config]
 file_contents = """
 var stacks = await komodo.read('ListStacks', {})
 
+console.log(stacks)
+
 var filteredStacks = stacks
   .filter(stack => !stack.template && stack.name !== 'komodo' && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
-  .map(stack => stack.id).join(',')
+  .map(stack => [stack.id, stack.name])
 
-const res = await komodo.execute('BatchDeployStackIfChanged', { pattern: filteredStacks });
-console.log(res);
+
+for (const [id, name] of filteredStacks) {
+  console.log(`Processing stack: ${name} (${id})`)
+  const res = await komodo.execute('DeployStackIfChanged', { stack: id })
+  console.log(res);
+}
 """
 
 ##
