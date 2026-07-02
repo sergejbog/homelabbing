@@ -1,0 +1,38 @@
+{
+	"manifest_version": 2,
+	"name": "4play",
+	"version": "1.0",
+	"description": "4play & dominate",
+	"icons": {
+		"32": "icon.png"
+	},
+	"browser_action": {
+		"default_icon": "icon.png",
+		"default_title": "4play",
+		"default_popup": "popup.html"
+	},
+	"permissions": [
+		"tabs",
+		"contextualIdentities",
+		"cookies",
+		"proxy",
+		"webNavigation",
+		"webRequest",
+		"webRequestBlocking",
+		"scripting",
+		"<all_urls>",
+		"activeTab",
+		"storage"
+	],
+	"background": {
+		"scripts": ["bg.js"]
+	},
+	"browser_specific_settings": {
+		"gecko": {
+			"strict_min_version": "102.0",
+			"data_collection_permissions": {
+				"required": ["none"]
+			}
+		}
+	}
+}
