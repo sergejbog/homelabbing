@@ -158,6 +158,34 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/chatwoot.s
 ##
 
 [[stack]]
+name = "crypto-investor-help"
+[stack.config]
+server = "Local"
+auto_pull = false
+run_build = true
+linked_repo = "crypto-investor-help"
+file_paths = ["docker-compose.yml"]
+environment = """
+ANALYST_TOKEN="dpLhIsISrPpDIMkdblxbAU8gLGmJqxf0"
+ANTHROPIC_MODEL="claude-sonnet-5"
+CLAUDE_BIN="claude"
+CLAUDE_CODE_OAUTH_TOKEN="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"
+CLAUDE_EXTRA_ARGS="--disallowedTools Bash,Edit,Write"
+COINGECKO_API_KEY="CG-Qxkxwr6NVPuwTBzpRvf5mAH6"
+DEGOOG_TOKEN="48d8c941a19197531c41253d6be5996bfb7554d73305af17e6d799859f33b1b5"
+DEGOOG_URL="http://degoog:4444"
+HOST="127.0.0.1"
+NTFY_PASS="J23!Kama16"
+NTFY_TOPIC="crypto-investor"
+NTFY_URL="https://notifications.sniperoo.app"
+NTFY_USER="serbog"
+PORT="5174"
+TRIGGER_TOKEN="NkyIoSAWAKkU1ZcfgGt44s0pxs5veO1w"
+"""
+
+##
+
+[[stack]]
 name = "degoog"
 [stack.config]
 server = "Local"
@@ -778,6 +806,16 @@ linked_repo = "job-automation"
 image_registry = [
   { domain = "docker.io", account = "serbog" }
 ]
+
+##
+
+[[repo]]
+name = "crypto-investor-help"
+[repo.config]
+server = "Local"
+builder = "Local"
+git_account = "sergejbog"
+repo = "sergejbog/crypto-investor-help"
 
 ##
 
