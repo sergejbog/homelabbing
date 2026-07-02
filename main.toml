@@ -158,6 +158,30 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/chatwoot.s
 ##
 
 [[stack]]
+name = "degoog"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/degoog"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh degoog
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh degoog
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = degoog
+"""
+
+##
+
+[[stack]]
 name = "epicgames-claimer"
 [stack.config]
 server = "Local"
@@ -391,6 +415,29 @@ environment = """
 ##
 
 [[stack]]
+name = "job-automaton"
+[stack.config]
+server = "Local"
+auto_pull = false
+run_build = true
+linked_repo = "job-automation"
+run_directory = "."
+file_paths = ["docker-compose.yml"]
+environment = """
+SERVICE_ACCOUNT_PATH="./creds/jobautomation-500312-01b4c24869b0.json"
+DRIVE_FOLDER_ID="12Jy5Yj-_rct4Aaq45DKfa8IQsPOqMeBp"
+SPREADSHEET_ID="12FKunk2lM38QLBm9qoThJzG3Un730_UaIdAY3Gnz0ys"
+TRIGGER_TOKEN="CASEvj7Dx1iIgAVyq1JWfpeKV15BK1Dv"
+REVIEW_USER="serbog"
+REVIEW_PASS="serbog2001"
+FLARESOLVERR_URL="http://flaresolverr:8191"
+CLASSIFY_PROVIDER=ollama
+OLLAMA_URL=http://10.49.0.4:11434
+"""
+
+##
+
+[[stack]]
 name = "karakeep"
 [stack.config]
 server = "Local"
@@ -510,6 +557,30 @@ environment = """
 ##
 
 [[stack]]
+name = "norish"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/norish"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh norish
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh norish
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = norish
+"""
+
+##
+
+[[stack]]
 name = "notifications"
 [stack.config]
 server = "Local"
@@ -607,6 +678,30 @@ SERVICE_NAME =
 ##
 
 [[stack]]
+name = "tandoor"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/tandoor"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh tandoor
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh tandoor
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = tandoor
+"""
+
+##
+
+[[stack]]
 name = "uptime-kuma"
 [stack.config]
 server = "Local"
@@ -679,6 +774,17 @@ environment = """
 
 ##
 
+[[build]]
+name = "job-automation-build"
+[build.config]
+builder = "Local"
+linked_repo = "job-automation"
+image_registry = [
+  { domain = "docker.io", account = "serbog" }
+]
+
+##
+
 [[repo]]
 name = "homelab"
 [repo.config]
@@ -696,6 +802,21 @@ server = "Local"
 builder = "Local"
 git_account = "sergejbog"
 repo = "sergejbog/homelabbing"
+
+##
+
+[[repo]]
+name = "job-automation"
+[repo.config]
+server = "Local"
+builder = "Local"
+git_account = "sergejbog"
+repo = "sergejbog/job-automation"
+environment = """
+SERVICE_ACCOUNT_PATH="./creds/jobautomation-500312-01b4c24869b0.json"
+DRIVE_FOLDER_ID="12Jy5Yj-_rct4Aaq45DKfa8IQsPOqMeBp"
+SPREADSHEET_ID="12FKunk2lM38QLBm9qoThJzG3Un730_UaIdAY3Gnz0ys"
+"""
 
 ##
 
