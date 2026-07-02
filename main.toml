@@ -798,17 +798,6 @@ environment = """
 
 ##
 
-[[build]]
-name = "job-automation-build"
-[build.config]
-builder = "Local"
-linked_repo = "job-automation"
-image_registry = [
-  { domain = "docker.io", account = "serbog" }
-]
-
-##
-
 [[repo]]
 name = "crypto-investor-help"
 [repo.config]
@@ -924,12 +913,15 @@ executions = [
 
 [[procedure]]
 name = "Pull-And-Deploy"
+config.webhook_secret = "45mtKL7q62pMcIRrX3Oqnnz0H7URZlKh"
 
 [[procedure.config.stage]]
 name = "Stage 1"
 enabled = true
 executions = [
-  { execution.type = "PullRepo", execution.params.repo = "homelabbing", enabled = true }
+  { execution.type = "PullRepo", execution.params.repo = "homelabbing", enabled = true },
+  { execution.type = "PullRepo", execution.params.repo = "crypto-investor-help", enabled = true },
+  { execution.type = "PullRepo", execution.params.repo = "job-automation", enabled = true }
 ]
 
 [[procedure.config.stage]]
@@ -1011,12 +1003,10 @@ var stacks = await komodo.read('ListStacks', {})
 
 var filteredStacks = stacks
   .filter(stack => !stack.template && stack.name !== 'komodo' && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
-  .map(stack => [stack.id, stack.name])
+  .map(stack => stack.id).join(',')
 
-for (const [id, name] of filteredStacks) {
-  console.log(`Processing stack: ${name} (${id})`)
-  await komodo.execute('DeployStackIfChanged', { stack: id })
-}
+const res = await komodo.execute('BatchDeployStackIfChanged', { pattern: filteredStacks });
+console.log(res);
 """
 
 ##
