@@ -1,0 +1,64 @@
+# Degoog + degoog-mcp sidecar.
+# Good for: exposing Degoog to LLMs / MCP clients (Claude, Cursor, llama.cpp, ...)
+# alongside the normal web UI. The sidecar reaches the aggregator internally
+# over the shared network at http://degoog:4444.
+#
+# Setup:
+#   mkdir -p ./data && sudo chown -R 1000:1000 ./data
+#   docker compose -f docker-compose-examples/mcp.yml up -d
+#
+# MCP endpoint: http://localhost:4443/mcp  (legacy SSE at /sse)
+#
+# Tips for small-context models (e.g. llama.cpp):
+#   DEGOOG_MCP_MAX_RESULTS caps how many merged results the search tool returns.
+#   DEGOOG_MCP_ENGINES restricts every search to specific engine ids. Discover
+#   valid ids with: curl http://localhost:4444/api/extensions?type=engine
+
+services:
+  degoog:
+    image: ghcr.io/degoog-org/degoog:latest
+    container_name: degoog
+    volumes:
+      - data:/app/data
+    networks:
+      - proxy
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.degoog.entrypoints=https"
+      - "traefik.http.routers.degoog.rule=Host(`degoog.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.degoog.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.degoog.tls=true"
+      - "traefik.http.routers.degoog.tls.certresolver=myresolver"
+      - "traefik.http.routers.degoog.service=degoog"
+      - "traefik.http.services.degoog.loadbalancer.server.port=4444"
+      - "traefik.docker.network=proxy"
+
+
+  degoog-mcp:
+    image: ghcr.io/degoog-org/mcp:latest
+    container_name: degoog-mcp
+    depends_on:
+      - degoog
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.degoog-mcp.entrypoints=https"
+      - "traefik.http.routers.degoog-mcp.rule=Host(`degoog-mcp.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.degoog-mcp.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.degoog-mcp.tls=true"
+      - "traefik.http.routers.degoog-mcp.tls.certresolver=myresolver"
+      - "traefik.http.routers.degoog-mcp.service=degoog-mcp"
+      - "traefik.http.services.degoog-mcp.loadbalancer.server.port=4443"
+      - "traefik.docker.network=proxy"
+    networks:
+      - proxy
+    restart: unless-stopped
+    env_file: .env
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  data: {}
