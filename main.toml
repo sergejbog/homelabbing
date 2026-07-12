@@ -13,6 +13,14 @@ enabled = true
 
 ##
 
+[[server]]
+name = "raspberry-pi"
+[server.config]
+address = "http://10.49.0.2:8120"
+enabled = true
+
+##
+
 [[stack]]
 name = "backrest"
 [stack.config]
@@ -680,6 +688,21 @@ SERVICE_NAME = reactive-resume
 name = "restic-server"
 [stack.config]
 server = "ex44"
+linked_repo = "homelabbing"
+run_directory = "services/restic-server"
+file_paths = ["docker-compose.yaml"]
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = restic-server
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/restic.svg
+"""
+
+##
+
+[[stack]]
+name = "restic-server-pi"
+[stack.config]
+server = "raspberry-pi"
 linked_repo = "homelabbing"
 run_directory = "services/restic-server"
 file_paths = ["docker-compose.yaml"]
