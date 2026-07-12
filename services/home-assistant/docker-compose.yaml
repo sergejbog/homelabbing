@@ -7,13 +7,15 @@ services:
       - /etc/localtime:/etc/localtime:ro
     restart: unless-stopped
     networks:
-      home-assistant:
+      proxy:
     depends_on:
       - homeassistant-db
     security_opt:
       - no-new-privileges:true
     ports:
-      - "8123:8123"
+      - "10.49.0.2:8123:8123"
+    labels:
+      - "traefik.http.routers.myapp.rule=Host(`home-assistant.${DOMAIN_NAME}`)"
   homeassistant-db:
     image: docker.io/postgres:16.3
     container_name: homeassistant-db
@@ -29,12 +31,14 @@ services:
     volumes:
       - home-assistant-db:/var/lib/postgresql/data
     networks:
-      home-assistant:
+      proxy:
     security_opt:
       - no-new-privileges:true
 
 networks:
-  home-assistant:
+  proxy:
+    external: true
+
 
 
 volumes:
