@@ -291,12 +291,21 @@ backup_postgres() {
     local password=""
 
     if [ -f "$compose_dir/.env" ]; then
-        # Try common password variable names
-        password=$(grep -E "^(DB_PASS|DB_PASSWORD|POSTGRES_PASSWORD|${database^^}_PASSWORD|DATABASE_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"')
+        # Try common password variable names. The trailing '|| true' is load-
+        # bearing: under 'set -euo pipefail' a grep no-match (or head SIGPIPE)
+        # returns non-zero and would silently abort the whole script.
+        password=$(grep -E "^(DB_PASS|DB_PASSWORD|POSTGRES_PASSWORD|${database^^}_PASSWORD|DATABASE_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"' || true)
+    fi
+
+    # Fall back to the running container's own environment. This is the
+    # authoritative source and works after cleanup-secrets-post-deploy.sh has
+    # removed the on-disk .env on the Komodo servers.
+    if [ -z "$password" ]; then
+        password=$(docker exec "$container" printenv POSTGRES_PASSWORD 2>/dev/null || true)
     fi
 
     if [ -z "$password" ]; then
-        echo -e "${YELLOW}Warning: Could not find password in .env, trying without password${NC}"
+        echo -e "${YELLOW}Warning: Could not find password, trying without password${NC}"
         password=""
     fi
 
@@ -337,11 +346,13 @@ backup_mariadb() {
     local password=""
 
     if [ -f "$compose_dir/.env" ]; then
-        password=$(grep -E "^(DB_PASS|DB_PASSWORD|MYSQL_PASSWORD|MARIADB_PASSWORD|${database^^}_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"')
+        # '|| true' keeps a grep no-match from aborting the script under set -e
+        password=$(grep -E "^(DB_PASS|DB_PASSWORD|MYSQL_PASSWORD|MARIADB_PASSWORD|${database^^}_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"' || true)
     fi
 
+    # Fall back to the running container's own environment
     if [ -z "$password" ]; then
-        password=$(docker exec "$container" printenv MYSQL_PASSWORD 2>/dev/null || true)
+        password=$(docker exec "$container" printenv MYSQL_PASSWORD 2>/dev/null || docker exec "$container" printenv MARIADB_PASSWORD 2>/dev/null || true)
     fi
 
     echo "Dumping MariaDB database: $database from $container"
@@ -705,9 +716,10 @@ cmd_restore() {
 
         # Filter snapshots by type
         if [ "$type" = "postgres" ] || [ "$type" = "mariadb" ]; then
-            restic snapshots --tag "$service" --tag "database"
+            # comma-separated tags = AND, so this is scoped to THIS service only
+            restic snapshots --tag "$service,database"
         else
-            restic snapshots --tag "$service" --tag "volume"
+            restic snapshots --tag "$service,volume"
         fi
         echo ""
         read -p "Enter snapshot ID to restore (or 'latest'): " snapshot_id
@@ -748,129 +760,117 @@ cmd_restore() {
             ;;
     esac
 
-    # Restore additional volumes if specified
+    # Resolve the timestamp of the primary snapshot the user chose, so any
+    # additional volumes/directories are restored from the SAME backup run
+    # rather than whatever happens to be newest across all services.
+    local anchor_time=$(restic snapshots "$snapshot_id" --json 2>/dev/null | jq -r '.[0].time // empty')
+
+    # Restore additional volumes if specified. Each volume is its own snapshot
+    # tagged <service> + volume + <volume-name>, so we resolve one snapshot PER
+    # volume, scoped to this service (comma tags = AND) and matched to the chosen
+    # run. Previously this grabbed the newest 'volume' snapshot of ANY service
+    # (--tag a --tag b is OR in restic), which restored the wrong service's data.
     local volumes_also=$(parse_yaml_list "$service" "volumes_also")
     if [ -n "$volumes_also" ]; then
         echo -e "\n${CYAN}Restoring additional volumes...${NC}"
 
-        # Get latest volume snapshot for this service
-        local volume_snapshot=$(restic snapshots --tag "$service" --tag "volume" --json | jq -r '.[-1].short_id')
+        echo "$volumes_also" | while read vol; do
+            [ -z "$vol" ] && continue
+            echo -e "\n${CYAN}Restoring additional volume: $vol${NC}"
 
-        if [ -n "$volume_snapshot" ] && [ "$volume_snapshot" != "null" ]; then
-            echo "Using volume snapshot: $volume_snapshot"
+            # This volume's snapshot from the chosen run: the earliest snapshot
+            # at or after the anchor time (volumes are backed up just after the
+            # DB within a run); fall back to the newest if none match.
+            local vol_snapshot=$(restic snapshots --tag "$service,volume,$vol" --json 2>/dev/null \
+                | jq -r --arg t "$anchor_time" '
+                    if $t == "" then .[-1].short_id
+                    else (([.[] | select(.time >= $t)] | .[0].short_id) // .[-1].short_id)
+                    end // empty')
 
-            # Create temporary restore directory
-            local restore_dir="/tmp/restore_${service}_volumes_$(date +%Y%m%d_%H%M%S)"
+            if [ -z "$vol_snapshot" ]; then
+                echo -e "${YELLOW}Warning: No snapshot found for volume $vol, skipping${NC}"
+                continue
+            fi
+            echo "Using snapshot: $vol_snapshot"
+
+            local mountpoint=$(docker volume inspect "$vol" --format '{{ .Mountpoint }}' 2>/dev/null || echo "")
+            if [ -z "$mountpoint" ]; then
+                echo -e "${YELLOW}Warning: Volume $vol not found, skipping${NC}"
+                continue
+            fi
+            echo "Volume mountpoint: $mountpoint"
+
+            local restore_dir="/tmp/restore_${service}_${vol}_$(date +%Y%m%d_%H%M%S)"
             mkdir -p "$restore_dir"
-
-            # Restore snapshot to temp directory
             echo "Restoring volume snapshot..."
-            restic restore "$volume_snapshot" --target "$restore_dir"
+            restic restore "$vol_snapshot" --target "$restore_dir"
 
-            # Restore each additional volume
-            echo "$volumes_also" | while read vol; do
-                echo "Restoring additional volume: $vol"
-
-                local mountpoint=$(docker volume inspect "$vol" --format '{{ .Mountpoint }}' 2>/dev/null || echo "")
-
-                if [ -z "$mountpoint" ]; then
-                    echo -e "${YELLOW}Warning: Volume $vol not found, skipping${NC}"
-                    continue
-                fi
-
-                echo "Volume mountpoint: $mountpoint"
-
-                # Clear existing data
+            # A volume snapshot contains exactly one volume's _data directory
+            local volume_backup_path=$(find "$restore_dir" -type d -name "_data" | head -1)
+            if [ -n "$volume_backup_path" ] && [ -d "$volume_backup_path" ]; then
                 echo "Clearing existing data..."
                 rm -rf "${mountpoint:?}"/*
-                rm -rf "${mountpoint:?}"/.[!.]*
-
-                # Find the restored volume data
-                local volume_backup_path=$(find "$restore_dir" -type d -name "_data" | grep "$vol" | head -1)
-
-                if [ -z "$volume_backup_path" ]; then
-                    volume_backup_path=$(find "$restore_dir" -type d -name "_data" | head -1)
-                fi
-
-                if [ -n "$volume_backup_path" ] && [ -d "$volume_backup_path" ]; then
-                    echo "Copying data from: $volume_backup_path"
-                    cp -a "$volume_backup_path"/* "$mountpoint/" 2>/dev/null || true
-                    cp -a "$volume_backup_path"/.[!.]* "$mountpoint/" 2>/dev/null || true
-
-                    local copied_files=$(find "$mountpoint" -type f | wc -l)
-                    echo "Files copied: $copied_files"
-                else
-                    echo -e "${YELLOW}Warning: Could not find volume data for $vol${NC}"
-                fi
-            done
-
-            # Cleanup
+                rm -rf "${mountpoint:?}"/.[!.]* 2>/dev/null || true
+                echo "Copying data from: $volume_backup_path"
+                cp -a "$volume_backup_path"/. "$mountpoint/" 2>/dev/null || true
+                local copied_files=$(find "$mountpoint" -type f | wc -l)
+                echo "Files copied: $copied_files"
+            else
+                echo -e "${YELLOW}Warning: Could not find volume data for $vol${NC}"
+            fi
             rm -rf "$restore_dir"
-        else
-            echo -e "${YELLOW}Warning: No volume snapshots found for additional volumes${NC}"
-        fi
+        done
     fi
 
-    # Restore additional directories if specified
+    # Restore additional directories if specified. Same model as volumes: one
+    # snapshot per directory, scoped to this service and matched to the run.
     local dirs_also=$(parse_yaml_list "$service" "directories_also")
     if [ -n "$dirs_also" ]; then
         echo -e "\n${CYAN}Restoring additional directories...${NC}"
 
-        # Get latest directory snapshot for this service
-        local dir_snapshot=$(restic snapshots --tag "$service" --tag "directory" --json | jq -r '.[-1].short_id')
+        echo "$dirs_also" | while read dir; do
+            [ -z "$dir" ] && continue
+            local dir_basename=$(basename "$dir")
+            echo -e "\n${CYAN}Restoring additional directory: $dir${NC}"
 
-        if [ -n "$dir_snapshot" ] && [ "$dir_snapshot" != "null" ]; then
-            echo "Using directory snapshot: $dir_snapshot"
+            local dir_snapshot=$(restic snapshots --tag "$service,directory,$dir_basename" --json 2>/dev/null \
+                | jq -r --arg t "$anchor_time" '
+                    if $t == "" then .[-1].short_id
+                    else (([.[] | select(.time >= $t)] | .[0].short_id) // .[-1].short_id)
+                    end // empty')
 
-            # Create temporary restore directory
-            local restore_dir="/tmp/restore_${service}_dirs_$(date +%Y%m%d_%H%M%S)"
+            if [ -z "$dir_snapshot" ]; then
+                echo -e "${YELLOW}Warning: No snapshot found for directory $dir, skipping${NC}"
+                continue
+            fi
+            echo "Using snapshot: $dir_snapshot"
+
+            local target_path="$ROOT_DIR/$dir"
+            mkdir -p "$(dirname "$target_path")"
+
+            local restore_dir="/tmp/restore_${service}_${dir_basename}_$(date +%Y%m%d_%H%M%S)"
             mkdir -p "$restore_dir"
-
-            # Restore snapshot to temp directory
             echo "Restoring directory snapshot..."
             restic restore "$dir_snapshot" --target "$restore_dir"
 
-            # Restore each additional directory
-            echo "$dirs_also" | while read dir; do
-                echo "Restoring additional directory: $dir"
+            local dir_backup_path=$(find "$restore_dir" -type d -path "*/$dir" | head -1)
+            if [ -z "$dir_backup_path" ]; then
+                dir_backup_path=$(find "$restore_dir" -type d -name "$dir_basename" | head -1)
+            fi
 
-                local target_path="$ROOT_DIR/$dir"
-
-                # Create parent directory if it doesn't exist
-                mkdir -p "$(dirname "$target_path")"
-
-                # Find the restored directory data
-                local dir_backup_path=$(find "$restore_dir" -type d -path "*/$dir" | head -1)
-
-                if [ -z "$dir_backup_path" ]; then
-                    # Try finding by basename
-                    local dir_basename=$(basename "$dir")
-                    dir_backup_path=$(find "$restore_dir" -type d -name "$dir_basename" | head -1)
-                fi
-
-                if [ -n "$dir_backup_path" ] && [ -d "$dir_backup_path" ]; then
-                    echo "Copying data from: $dir_backup_path"
-                    echo "To: $target_path"
-
-                    # Clear existing data
-                    rm -rf "$target_path"
-
-                    # Copy the directory
-                    cp -a "$dir_backup_path" "$target_path"
-
-                    local copied_files=$(find "$target_path" -type f 2>/dev/null | wc -l)
-                    echo "Files copied: $copied_files"
-                else
-                    echo -e "${YELLOW}Warning: Could not find directory data for $dir${NC}"
-                    echo "Searched in: $restore_dir"
-                fi
-            done
-
-            # Cleanup
+            if [ -n "$dir_backup_path" ] && [ -d "$dir_backup_path" ]; then
+                echo "Copying data from: $dir_backup_path"
+                echo "To: $target_path"
+                rm -rf "$target_path"
+                cp -a "$dir_backup_path" "$target_path"
+                local copied_files=$(find "$target_path" -type f 2>/dev/null | wc -l)
+                echo "Files copied: $copied_files"
+            else
+                echo -e "${YELLOW}Warning: Could not find directory data for $dir${NC}"
+                echo "Searched in: $restore_dir"
+            fi
             rm -rf "$restore_dir"
-        else
-            echo -e "${YELLOW}Warning: No directory snapshots found${NC}"
-        fi
+        done
     fi
 
     echo -e "\n${GREEN}✓ Restore completed for: $service${NC}"
@@ -890,7 +890,14 @@ restore_postgres() {
     local password=""
 
     if [ -f "$compose_dir/.env" ]; then
-        password=$(grep -E "^(DB_PASS|DB_PASSWORD|POSTGRES_PASSWORD|${database^^}_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"')
+        # '|| true' is required: without it a grep no-match aborts the restore
+        # silently under 'set -euo pipefail', before the echo below ever runs.
+        password=$(grep -E "^(DB_PASS|DB_PASSWORD|POSTGRES_PASSWORD|${database^^}_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"' || true)
+    fi
+
+    # Fall back to the running container's own environment
+    if [ -z "$password" ]; then
+        password=$(docker exec "$container" printenv POSTGRES_PASSWORD 2>/dev/null || true)
     fi
 
     echo "Restoring PostgreSQL database: $database"
@@ -1010,7 +1017,13 @@ restore_mariadb() {
     local password=""
 
     if [ -f "$compose_dir/.env" ]; then
-        password=$(grep -E "^(DB_PASS|DB_PASSWORD|MYSQL_PASSWORD|MARIADB_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"')
+        # '|| true' keeps a grep no-match from silently aborting under set -e
+        password=$(grep -E "^(DB_PASS|DB_PASSWORD|MYSQL_PASSWORD|MARIADB_PASSWORD|${database^^}_PASSWORD)" "$compose_dir/.env" | cut -d'=' -f2- | head -1 | tr -d '"' || true)
+    fi
+
+    # Fall back to the running container's own environment
+    if [ -z "$password" ]; then
+        password=$(docker exec "$container" printenv MYSQL_PASSWORD 2>/dev/null || docker exec "$container" printenv MARIADB_PASSWORD 2>/dev/null || true)
     fi
 
     echo "Restoring MariaDB database: $database"

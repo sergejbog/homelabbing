@@ -124,7 +124,7 @@ services:
       - COUCHDB_USER=${COUCH_DB_USER}
       - TARGETBUILD=docker-compose
     volumes:
-      - couchdb3_data:/opt/couchdb/data
+      - couchdb3_data:/data
     networks:
       proxy:
 
