@@ -394,6 +394,9 @@ server = "raspberry-pi"
 linked_repo = "homelabbing"
 run_directory = "services/home-assistant"
 file_paths = ["docker-compose.yaml"]
+config_files = [
+  { path = "config/configuration.yaml", services = ["homeassistant"] }
+]
 environment = """
   # VARIABLE = value
 SERVICE_NAME = traefik-edge
