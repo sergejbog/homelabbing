@@ -1261,7 +1261,7 @@ var stacks = await komodo.read('ListStacks', {})
 console.log(stacks)
 
 var filteredStacks = stacks
-  .filter(stack => !stack.template && stack.name !== 'komodo' && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
+  .filter(stack => !stack.template && !['komodo', 'traefik'].includes(stack.name) && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
   .map(stack => [stack.id, stack.name])
 
 
@@ -1269,6 +1269,18 @@ for (const [id, name] of filteredStacks) {
   console.log(`Processing stack: ${name} (${id})`)
   const res = await komodo.execute('DeployStackIfChanged', { stack: id })
   console.log(res);
+}
+
+// Always deploy traefik LAST: its pre_deploy regenerates dynamic/edge-routes.yaml
+// from main.toml, so hostname->server routes never go stale even when only
+// main.toml changed (traefik's own files unchanged => DeployStackIfChanged
+// would skip it). compose up -d is a no-op when nothing changed, and the
+// file-provider directory watch hot-reloads route changes without a restart.
+const traefik = stacks.find(s => s.name === 'traefik')
+if (traefik) {
+  console.log(`Deploying traefik (${traefik.id}) to refresh edge routes`)
+  const res = await komodo.execute('DeployStack', { stack: traefik.id })
+  console.log(res)
 }
 """
 
