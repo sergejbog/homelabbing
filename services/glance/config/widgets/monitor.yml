@@ -23,12 +23,6 @@
     - title: Wiki (BookStack)
       url: https://wiki.${DOMAIN_NAME}
       icon: sh:bookstack
-    - title: Plane
-      url: https://plane.coolify-server.${DOMAIN_NAME}
-      icon: sh:plane
-    - title: Grocy
-      url: https://grocy.${DOMAIN_NAME}
-      icon: sh:grocy
     - title: IT Tools
       url: https://tools.${DOMAIN_NAME}
       icon: sh:it-tools
