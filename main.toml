@@ -388,6 +388,22 @@ SERVICE_NAME = grocy
 ##
 
 [[stack]]
+name = "home-assistant"
+[stack.config]
+server = "raspberry-pi"
+linked_repo = "homelabbing"
+run_directory = "services/home-assistant"
+file_paths = ["docker-compose.yaml"]
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = traefik-edge
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/traefik.svg
+EDGE_PORT=8090
+"""
+
+##
+
+[[stack]]
 name = "infisical"
 [stack.config]
 server = "Local"
