@@ -740,13 +740,16 @@ SERVICE_NAME = tandoor
 
 ##
 
-# Per-server Traefik edge (see services/traefik-edge/docker-compose.yaml).
-# To add Traefik to a new server: copy this block, change `server` and the
-# EDGE_NAME line — same files, no manual bootstrap.
+# Per-server Traefik edge template (see services/traefik-edge/README.md).
+# To add Traefik to a new server: copy this block, drop `template = true`,
+# set `server` and the EDGE_NAME line — same files, no manual bootstrap.
+# NOT deployed on ex44: Coolify's proxy already owns 443 there and acts as
+# the edge instead (one-time customization documented in the README).
 [[stack]]
-name = "traefik-edge-ex44"
+name = "traefik-edge-template"
+template = true
 [stack.config]
-server = "ex44"
+server = "Local"
 linked_repo = "homelabbing"
 run_directory = "services/traefik-edge"
 file_paths = ["docker-compose.yaml"]
@@ -755,7 +758,7 @@ pre_deploy.command = """
   # Fetch shared secrets (DOMAIN_NAME, LETSENCRYPT_EMAIL, BASIC_AUTH),
   # then append the per-server edge name used for the dashboard hostname.
   sh ./fetch-secrets-pre-deploy.sh traefik-edge
-  echo "EDGE_NAME=ex44" >> ../services/traefik-edge/.env
+  echo "EDGE_NAME=<server-slug>" >> ../services/traefik-edge/.env
 """
 post_deploy.path = "../../scripts"
 post_deploy.command = """

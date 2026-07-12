@@ -8,11 +8,16 @@
 # service labels are written identically no matter which server hosts them.
 #
 # Adding a server:
-#   1. Copy the traefik-edge-ex44 stack block in main.toml, change `server`
-#      and the EDGE_NAME line in pre_deploy. No new files needed.
+#   1. Copy the traefik-edge-template stack block in main.toml, drop
+#      `template = true`, set `server` and the EDGE_NAME line in pre_deploy.
+#      No new files needed.
 #   2. Make sure the server has the `proxy` docker network and
 #      /etc/komodo/bin/infisical (needed by fetch-secrets-pre-deploy.sh).
 #   3. Point one Route53 A record per hosted service at that server's IP.
+#
+# EXCEPTION: servers already running Coolify (ex44). Coolify's proxy owns
+# 80/443 there — do NOT deploy this stack on those; customize Coolify's own
+# Traefik instead. See README.md in this directory.
 #
 # .env is provisioned by fetch-secrets-pre-deploy.sh: Infisical root (/)
 # supplies DOMAIN_NAME + LETSENCRYPT_EMAIL, /traefik-edge supplies BASIC_AUTH,

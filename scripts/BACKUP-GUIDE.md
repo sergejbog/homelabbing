@@ -46,9 +46,10 @@ Why this layout:
 
 ### One-time setup of the primary repository
 
-0. ex44 needs its own Traefik edge (labels are only seen by the Traefik on
-   the same host) — deploy the `traefik-edge-ex44` Komodo stack (files in
-   `services/traefik-edge/`), and create a Route53 A record
+0. ex44 needs an HTTPS edge on its own host (labels are only seen by the
+   Traefik running there). On ex44 that edge is Coolify's built-in Traefik
+   proxy — apply the one-time customization in
+   `services/traefik-edge/README.md` (Path 2), and create a Route53 A record
    `restic.<domain>` → ex44's IP.
 1. Deploy the `restic-server` stack (server ex44), then create the HTTP user:
    ```bash
