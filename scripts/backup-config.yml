@@ -72,7 +72,7 @@ services:
     notes: "Customer support conversations"
 
 
-  grafana:
+  grafana-stack:
     priority: high
     type: volume
     volumes:
