@@ -37,7 +37,6 @@ services:
           - automation.${DOMAIN_NAME}
           - chatwoot.${DOMAIN_NAME}
           - komodo.${DOMAIN_NAME}
-          - grafana.${DOMAIN_NAME}
           - traefik.${DOMAIN_NAME}
           - uptime-kuma.${DOMAIN_NAME}
           - wiki.${DOMAIN_NAME}
