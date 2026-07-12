@@ -4,8 +4,6 @@ services:
     container_name: vaultwarden
     restart: unless-stopped
     env_file: .env
-    environment:
-      - ROCKET_TLS='{certs="/home/johnny/.local/share/mkcert/rootCA.pem",key="/home/johnny/.local/share/mkcert/rootCA-key.pem"}''
     ports:
       - "80:80"
     volumes:
