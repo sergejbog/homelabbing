@@ -1,0 +1,41 @@
+services:
+  homeassistant:
+    container_name: homeassistant
+    image: "ghcr.io/home-assistant/home-assistant:stable"
+    volumes:
+      - .=config:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: unless-stopped
+    networks:
+      home-assistant:
+    depends_on:
+      - homeassistant-db
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "8123:8123"
+  homeassistant-db:
+    image: docker.io/postgres:16.3
+    container_name: homeassistant-db
+    restart: unless-stopped
+    # Change that password, of course!
+    environment:
+      - POSTGRES_USER=homeassistant_user
+      - POSTGRES_PASSWORD=xF2odDFSjd3DFsl0ZgfQsjnd55yH
+      - POSTGRES_DB=homeassistant-db
+      # ensure the database gets created correctly
+      # https://github.com/matrix-org/synapse/blob/master/docs/postgres.md#set-up-database
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8
+    volumes:
+      - home-assistant-db:/var/lib/postgresql/data
+    networks:
+      home-assistant:
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  home-assistant:
+
+
+volumes:
+  home-assistant-db:

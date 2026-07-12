@@ -16,3 +16,5 @@ homepage.log
 .claude
 services/n8n/workflows
 services/traefik/dynamic/edge-routes.yaml
+services/home-assistant/config
+services/home-assistant/hass-cozylife
