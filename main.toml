@@ -677,6 +677,21 @@ SERVICE_NAME = reactive-resume
 ##
 
 [[stack]]
+name = "restic-server"
+[stack.config]
+server = "ex44"
+linked_repo = "homelabbing"
+run_directory = "services/restic-server"
+file_paths = ["docker-compose.yaml"]
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = restic-server
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/restic.svg
+"""
+
+##
+
+[[stack]]
 name = "secrets-included-template"
 template = true
 [stack.config]
@@ -721,6 +736,36 @@ sh ./cleanup-secrets-post-deploy.sh tandoor
 environment = """
   # VARIABLE = value
 SERVICE_NAME = tandoor
+"""
+
+##
+
+# Per-server Traefik edge (see services/traefik-edge/docker-compose.yaml).
+# To add Traefik to a new server: copy this block, change `server` and the
+# EDGE_NAME line — same files, no manual bootstrap.
+[[stack]]
+name = "traefik-edge-ex44"
+[stack.config]
+server = "ex44"
+linked_repo = "homelabbing"
+run_directory = "services/traefik-edge"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Fetch shared secrets (DOMAIN_NAME, LETSENCRYPT_EMAIL, BASIC_AUTH),
+  # then append the per-server edge name used for the dashboard hostname.
+  sh ./fetch-secrets-pre-deploy.sh traefik-edge
+  echo "EDGE_NAME=ex44" >> ../services/traefik-edge/.env
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh traefik-edge
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = traefik-edge
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/traefik.svg
 """
 
 ##
@@ -894,6 +939,28 @@ executions = [
   { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "wallos", enabled = true }
 ]
 
+[[procedure.config.stage]]
+name = "Offsite Sync"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Backup-Maintenance", execution.params.args.command = "sync-offsite", enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Backup-Maintenance-Weekly"
+description = "Weekly repository maintenance: applies retention (forget) for every service, prunes and checks the primary repository, then applies retention + prune on the offsite repository. Kept out of the daily backup path so parallel backups never fight over restic's exclusive lock."
+tags = ["backup", "system"]
+config.schedule = "Every Sunday at 04:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "RunAction", execution.params.action = "Backup-Maintenance", execution.params.args.command = "maintenance", enabled = true }
+]
+
 ##
 
 [[procedure]]
@@ -1011,23 +1078,104 @@ const terminal = await komodo.write('CreateTerminal', {
 });
 
 
+// Two timeout layers so a hung backup can never wedge the procedure again
+// (like the run stuck from Mar 13): 'timeout' kills the script on the host
+// after 60 min, and the Promise.race aborts the action even if the terminal
+// stream itself dies and execute_terminal never resolves.
+let timer;
+const timedOut = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Backup for '${service}' exceeded 65 minutes, aborting`)), 65 * 60 * 1000);
+});
+
 try {
-    const cmd = `nsenter -t 1 -m -n -- bash ${scriptPath} backup ${service}`;
+    const cmd = `nsenter -t 1 -m -n -- timeout -k 60 3600 bash ${scriptPath} backup ${service}`;
 
     console.log(`Running: ${scriptPath} backup ${service}`);
-    const result = await komodo.execute_terminal({
-        command: cmd,
-        server: serverId,
-        terminal: terminalName
-    }, {
-        onLine: (line) => console.log(line),
-        onFinish: (code) => console.log("Finished:", code),
-    });
+    let exitCode = null;
+    const result = await Promise.race([
+        komodo.execute_terminal({
+            command: cmd,
+            server: serverId,
+            terminal: terminalName
+        }, {
+            onLine: (line) => console.log(line),
+            onFinish: (code) => { console.log("Finished:", code); exitCode = code; },
+        }),
+        timedOut,
+    ]);
     console.log('Result:', JSON.stringify(result, null, 2));
+    // Propagate script failure so the procedure shows red instead of silently succeeding
+    if (String(exitCode) !== '0') {
+        throw new Error(`Backup for '${service}' exited with code ${exitCode}`);
+    }
     console.log(`✓ Backup completed for: ${service}`);
 } finally {
+    clearTimeout(timer);
     // Always clean up the terminal even if backup fails
     await komodo.write('DeleteTerminal', { terminal: terminalName, server: serverId });
+}
+"""
+
+##
+
+[[action]]
+name = "Backup-Maintenance"
+description = "Runs backup-manager.sh maintenance commands. Pass ARGS.command = 'maintenance' (weekly retention + prune + check) or 'sync-offsite' (copy new snapshots to the offsite repo). Optional ARGS.server (default: Local)."
+[action.config]
+file_contents = """
+const command: string = ARGS.command ?? 'maintenance';
+const serverName: string = ARGS.server ?? 'Local';
+
+const allowed = ['maintenance', 'sync-offsite'];
+if (!allowed.includes(command)) {
+    throw new Error(`Unsupported command: '${command}'. Allowed: ${allowed.join(', ')}`);
+}
+
+const scriptPath = '/etc/komodo/repos/homelabbing/scripts/backup-manager.sh';
+
+const servers = await komodo.read('ListServers', {});
+const server = servers.find((s: any) => s.name === serverName);
+if (!server) {
+    throw new Error(`Server not found: '${serverName}'`);
+}
+
+const terminalName = `backup-${command}-${Date.now()}`;
+await komodo.write('CreateTerminal', {
+    name: terminalName,
+    server: serverName,
+    command: "bash"
+});
+
+// Same two timeout layers as Backup-Service, with a larger budget since
+// prune can take longer than a backup.
+let timer;
+const timedOut = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`'${command}' exceeded 3 hours, aborting`)), 185 * 60 * 1000);
+});
+
+try {
+    const cmd = `nsenter -t 1 -m -n -- timeout -k 60 10800 bash ${scriptPath} ${command}`;
+
+    console.log(`Running: ${scriptPath} ${command} on ${serverName}`);
+    let exitCode = null;
+    await Promise.race([
+        komodo.execute_terminal({
+            command: cmd,
+            server: server.id,
+            terminal: terminalName
+        }, {
+            onLine: (line) => console.log(line),
+            onFinish: (code) => { console.log("Finished:", code); exitCode = code; },
+        }),
+        timedOut,
+    ]);
+    if (String(exitCode) !== '0') {
+        throw new Error(`'${command}' exited with code ${exitCode}`);
+    }
+    console.log(`✓ ${command} completed`);
+} finally {
+    clearTimeout(timer);
+    await komodo.write('DeleteTerminal', { terminal: terminalName, server: server.id });
 }
 """
 

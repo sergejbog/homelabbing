@@ -1,0 +1,11 @@
+http:
+  middlewares:
+    admin-auth:
+      basicAuth:
+        users:
+          - '{{ env "BASIC_AUTH" }}'
+    AddForwardedHeader:
+      plugin:
+        AddForwardedHeader:
+          by: Traefik # The IP that traefik uses to communicate with the destination server.
+          forHeader: X-Real-Ip # Get the Client IP from this header.

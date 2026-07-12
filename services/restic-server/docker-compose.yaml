@@ -1,0 +1,31 @@
+services:
+  restic-server:
+    image: restic/rest-server:latest
+    container_name: restic-server
+    hostname: restic-server
+    # Authentication is enabled by default via /data/.htpasswd.
+    # One-time setup after first deploy:
+    #   docker exec -it restic-server create_user backups '<strong-password>'
+    # Repo URL for restic clients:
+    #   rest:https://backups:<strong-password>@restic.${DOMAIN_NAME}/
+    volumes:
+      - restic_server_data:/data
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.restic-server.entrypoints=https"
+      - "traefik.http.routers.restic-server.rule=Host(`restic.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.restic-server.tls=true"
+      - "traefik.http.routers.restic-server.tls.certresolver=myresolver"
+      - "traefik.http.routers.restic-server.service=restic-server"
+      - "traefik.http.services.restic-server.loadbalancer.server.port=8000"
+      - "traefik.docker.network=proxy"
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  restic_server_data: {}

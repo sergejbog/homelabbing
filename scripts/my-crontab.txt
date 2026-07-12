@@ -1,6 +1,10 @@
-# Backups are now orchestrated by the Komodo "Backup-All" procedure (scheduled daily at 01:10).
-# The procedure routes each service to the correct server automatically via Komodo Periphery.
-# See: main.toml [[procedure]] "Backup-All" and [[action]] "Backup-Service"
+# Backups are now orchestrated by the Komodo "Backup-All" procedure (scheduled daily at 01:10),
+# which also copies new snapshots to the offsite repo in its final "Offsite Sync" stage.
+# Weekly retention + prune + check runs via the "Backup-Maintenance-Weekly" procedure (Sundays 04:00).
+# The procedures route each service to the correct server automatically via Komodo Periphery.
+# See: main.toml [[procedure]] "Backup-All" / "Backup-Maintenance-Weekly" and [[action]] "Backup-Service" / "Backup-Maintenance"
 #
 # Uncomment below only as a fallback if Komodo scheduling is unavailable:
 # 10 1 * * * /etc/komodo/repos/homelab/scripts/backup-manager.sh backup-all >> /var/log/backup-komodo.log 2>&1
+# 15 3 * * * /etc/komodo/repos/homelab/scripts/backup-manager.sh sync-offsite >> /var/log/backup-komodo.log 2>&1
+# 0 4 * * 0 /etc/komodo/repos/homelab/scripts/backup-manager.sh maintenance >> /var/log/backup-komodo.log 2>&1

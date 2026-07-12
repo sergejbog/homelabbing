@@ -11,3 +11,7 @@ RESTIC_REPOSITORY="{{ vault_restic_repository }}"
 RESTIC_PASSWORD="{{ vault_restic_password }}"
 B2_ACCOUNT_ID="{{ vault_b2_account_id }}"
 B2_ACCOUNT_KEY="{{ vault_b2_account_key }}"
+
+RESTIC_REPOSITORY_OFFSITE="{{ vault_restic_repository_offsite | default('') }}"
+RESTIC_PASSWORD_OFFSITE="{{ vault_restic_password_offsite | default('') }}"
+BACKUP_PUSH_URL="{{ vault_backup_push_url | default('') }}"

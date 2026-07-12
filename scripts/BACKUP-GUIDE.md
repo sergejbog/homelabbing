@@ -16,7 +16,73 @@ cd ~/self-hosted
 ./backup-manager.sh restore <service> latest    # restore latest
 ./backup-manager.sh restore <service> <id>      # restore specific snapshot
 ./backup-manager.sh add <service>               # add new service interactively
+./backup-manager.sh sync-offsite                # copy new snapshots to offsite repo
+./backup-manager.sh maintenance                 # retention + prune + check (weekly)
 ```
+
+---
+
+## Repository Architecture (3-2-1)
+
+```
+live data (both servers)
+        │  restic backup  (daily, Komodo "Backup-All" @ 01:10)
+        ▼
+PRIMARY: rest-server on ex44          RESTIC_REPOSITORY
+        │  restic copy    (daily, "Offsite Sync" stage after backups)
+        ▼
+OFFSITE: Backblaze B2                 RESTIC_REPOSITORY_OFFSITE
+```
+
+Why this layout:
+
+- **Backups, restores, prune and check run against the primary** (rest-server
+  on ex44) — fast, LAN-priced, no B2 transaction caps involved.
+- **B2 only receives `restic copy` uploads** (Class A = free) plus light
+  metadata reads. Class B (download) usage drops to almost nothing.
+- **Restores never depend on B2 caps** unless both servers are gone — and for
+  that true disaster case, raise the B2 daily caps (Account → Caps & Alerts)
+  so a full restore can't be blocked mid-recovery.
+
+### One-time setup of the primary repository
+
+0. ex44 needs its own Traefik edge (labels are only seen by the Traefik on
+   the same host) — deploy the `traefik-edge-ex44` Komodo stack (files in
+   `services/traefik-edge/`), and create a Route53 A record
+   `restic.<domain>` → ex44's IP.
+1. Deploy the `restic-server` stack (server ex44), then create the HTTP user:
+   ```bash
+   docker exec -it restic-server create_user backups '<strong-password>'
+   ```
+2. Initialize the new primary with the SAME chunker parameters as the
+   existing B2 repo (so future copies deduplicate against old data):
+   ```bash
+   restic -r "rest:https://backups:<pw>@restic.<domain>/" init \
+       --from-repo "b2:<bucket>:/restic" \
+       --from-password-file <(printf '%s' "$RESTIC_PASSWORD") \
+       --copy-chunker-params
+   ```
+3. Update `scripts/.env` on BOTH servers:
+   - `RESTIC_REPOSITORY` → the `rest:https://...` URL
+   - `RESTIC_REPOSITORY_OFFSITE` → the old `b2:...` repo
+4. (Optional) Seed old history into the primary — downloads the whole repo
+   from B2 once, so raise the B2 caps first:
+   ```bash
+   restic copy --from-repo "b2:<bucket>:/restic" \
+       --from-password-file <(printf '%s' "$RESTIC_PASSWORD")
+   ```
+5. Run the Komodo `Backup-All` procedure and confirm the final
+   "Offsite Sync" stage copies the new snapshots to B2.
+
+Until step 3 is done, everything keeps working against B2 directly, and
+`sync-offsite` is a no-op.
+
+### Dead man's switch (Uptime Kuma)
+
+Create a **Push** monitor in Uptime Kuma (heartbeat interval ~86400s / 1 day,
+retries 1) and put its bare push URL in `BACKUP_PUSH_URL` in `scripts/.env`.
+Every successful service backup pings it; if no backup succeeds for a day,
+Kuma alerts. Individual service failures are reported separately via Apprise.
 
 ---
 
@@ -60,20 +126,29 @@ authentik:
 
 ---
 
-## Scheduling Backups (Cron)
+## Scheduling
+
+All scheduling runs through Komodo procedures (see `main.toml`):
+
+| Procedure | Schedule | What it does |
+|-----------|----------|--------------|
+| `Backup-All` | Daily 01:10 | Per-service backups (critical → high → medium stages), then the "Offsite Sync" stage copies new snapshots to B2 |
+| `Backup-Maintenance-Weekly` | Sunday 04:00 | Retention (`forget`) for every service, `prune` + `check` on the primary, retention + `prune` on the offsite repo |
+
+Retention and prune are deliberately **not** part of the daily backup path:
+`forget`/`prune` need restic's exclusive lock, which collides with the
+parallel per-service backups, and prune is the expensive operation that
+downloads and repacks data.
+
+Cron fallback if Komodo scheduling is unavailable:
 
 ```bash
-# Critical services - every 6 hours
-0 */6 * * * cd /root/self-hosted && ./backup-manager.sh backup-all critical >> /var/log/backup-critical.log 2>&1
+# Daily backups at 01:10
+10 1 * * * /etc/komodo/repos/homelabbing/scripts/backup-manager.sh backup-all >> /var/log/backup-komodo.log 2>&1
+15 3 * * * /etc/komodo/repos/homelabbing/scripts/backup-manager.sh sync-offsite >> /var/log/backup-komodo.log 2>&1
 
-# High priority - every 12 hours
-0 */12 * * * cd /root/self-hosted && ./backup-manager.sh backup-all high >> /var/log/backup-high.log 2>&1
-
-# Medium priority - daily at 2 AM
-0 2 * * * cd /root/self-hosted && ./backup-manager.sh backup-all medium >> /var/log/backup-medium.log 2>&1
-
-# Low priority - weekly on Sunday at 3 AM
-0 3 * * 0 cd /root/self-hosted && ./backup-manager.sh backup-all low >> /var/log/backup-low.log 2>&1
+# Weekly maintenance on Sunday at 04:00
+0 4 * * 0 /etc/komodo/repos/homelabbing/scripts/backup-manager.sh maintenance >> /var/log/backup-komodo.log 2>&1
 ```
 
 ---

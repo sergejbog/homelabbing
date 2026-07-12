@@ -41,7 +41,6 @@ services:
           - traefik.${DOMAIN_NAME}
           - uptime-kuma.${DOMAIN_NAME}
           - wiki.${DOMAIN_NAME}
-          - grocy.${DOMAIN_NAME}
           - tools.${DOMAIN_NAME}
           - change.${DOMAIN_NAME}
           - budibase.${DOMAIN_NAME}

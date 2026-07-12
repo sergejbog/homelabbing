@@ -1,0 +1,52 @@
+# Reusable per-server Traefik edge, deployed by Komodo (one stack per server,
+# e.g. "traefik-edge-ex44" in main.toml).
+#
+# Traefik's Docker provider only sees containers on its own host, so every
+# server that runs web-exposed stacks gets one of these. It mirrors
+# services/traefik (Local) with the same resolver name (myresolver), network
+# (proxy) and file middlewares (admin-auth@file, AddForwardedHeader@file), so
+# service labels are written identically no matter which server hosts them.
+#
+# Adding a server:
+#   1. Copy the traefik-edge-ex44 stack block in main.toml, change `server`
+#      and the EDGE_NAME line in pre_deploy. No new files needed.
+#   2. Make sure the server has the `proxy` docker network and
+#      /etc/komodo/bin/infisical (needed by fetch-secrets-pre-deploy.sh).
+#   3. Point one Route53 A record per hosted service at that server's IP.
+#
+# .env is provisioned by fetch-secrets-pre-deploy.sh: Infisical root (/)
+# supplies DOMAIN_NAME + LETSENCRYPT_EMAIL, /traefik-edge supplies BASIC_AUTH,
+# and the stack's pre_deploy appends the per-server EDGE_NAME.
+services:
+  traefik:
+    image: traefik:latest
+    container_name: "traefik-edge"
+    env_file: .env
+    ports:
+      - "443:443"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-secure.entrypoints=https"
+      - "traefik.http.routers.traefik-secure.rule=Host(`traefik-${EDGE_NAME:-edge}.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.traefik-secure.middlewares=admin-auth@file"
+      - "traefik.http.routers.traefik-secure.tls=true"
+      - "traefik.http.routers.traefik-secure.tls.certresolver=myresolver"
+      - "traefik.http.routers.traefik-secure.service=api@internal"
+    volumes:
+      # Named volume (not a bind mount) so acme.json survives repo re-clones
+      - "letsencrypt:/letsencrypt"
+      - "./traefik.yaml:/traefik.yaml:ro"
+      - "./config.yaml:/config.yaml:ro"
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - proxy
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+
+volumes:
+  letsencrypt:

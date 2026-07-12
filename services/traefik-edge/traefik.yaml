@@ -1,0 +1,44 @@
+log:
+  level: "INFO"
+
+api:
+  dashboard: true
+
+entryPoints:
+  http:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: https
+          scheme: https
+  https:
+    address: ":443"
+
+serversTransport:
+  insecureSkipVerify: true
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+
+  file:
+    filename: /config.yaml
+
+certificatesResolvers:
+  myresolver:
+    acme:
+      # TLS-ALPN works per host as long as the hostname's DNS record points
+      # at this server. For zero-DNS-per-service, switch to dnsChallenge with
+      # provider "route53" and a per-server wildcard (e.g. *.ex44.<domain>).
+      tlsChallenge: {}
+      email: '{{ env "LETSENCRYPT_EMAIL" }}'
+      storage: "/letsencrypt/acme.json"
+      # caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+
+experimental:
+  plugins:
+    AddForwardedHeader:
+      moduleName: "github.com/jerrywoo96/AddForwardedHeader"
+      version: "v1.0.1"

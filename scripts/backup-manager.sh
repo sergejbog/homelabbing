@@ -37,11 +37,24 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
     export APPRISE_URL
     export APPRISE_CONFIG
     export APPRISE_LOGIN
+    export NTFY_URL
+    export NTFY_LOGIN
 
     export RESTIC_REPOSITORY
     export RESTIC_PASSWORD
     export B2_ACCOUNT_ID
     export B2_ACCOUNT_KEY
+
+    # Persistent cache so restic doesn't re-download repo metadata on every
+    # invocation (Komodo terminals don't share a stable $HOME)
+    export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-/var/cache/restic}"
+    mkdir -p "$RESTIC_CACHE_DIR"
+
+    # Optional: offsite replica repository (see 'sync-offsite') and
+    # Uptime Kuma push monitor URL (dead man's switch)
+    export RESTIC_REPOSITORY_OFFSITE="${RESTIC_REPOSITORY_OFFSITE:-}"
+    export RESTIC_PASSWORD_OFFSITE="${RESTIC_PASSWORD_OFFSITE:-$RESTIC_PASSWORD}"
+    export BACKUP_PUSH_URL="${BACKUP_PUSH_URL:-}"
 else
     echo "❌ Error: ${SCRIPT_DIR}/.env not found"
     echo "Please create it with APPRISE_URL, APPRISE_CONFIG, and APPRISE_LOGIN"
@@ -54,8 +67,8 @@ send_apprise_notification() {
     local body="$2"
     local type="${3:-info}"  # info, success, warning, failure
 
-    if [ -z "${APPRISE_URL:-}" ]; then
-        echo -e "${YELLOW}Warning: APPRISE_URL not set, skipping notification${NC}"
+    if [ -z "${NTFY_URLY:-}" ]; then
+        echo -e "${YELLOW}Warning: NTFY_URLY not set, skipping notification${NC}"
         return 0
     fi
 
@@ -63,16 +76,13 @@ send_apprise_notification() {
     body+="\n\n[View Backup Logs]($logs_link)"
 
     # Send notification using apprise CLI or curl
-    if command -v apprise &> /dev/null; then
-        echo "$body" | apprise -t "$title" -b - "$APPRISE_URL" --tag "$type"
-    else
-        # Fallback to curl if apprise CLI is not installed
-        curl -X POST "$APPRISE_URL/notify/$APPRISE_CONFIG?tags=backups" \
-            -u "$APPRISE_LOGIN" \
-            -H "Content-Type: application/json" \
-            -d "{\"title\": \"$title\", \"body\": \"$body\", \"type\": \"$type\"}" \
+    curl -X POST "$NTFY_URLY/homelab-backup" \
+            -u "$NTFY_LOGIN" \
+            -H "Title: $title" \
+            -H "Tags: white_check_mark,floppy_disk" \
+            -h "Markdown: yes" \
+            -d "$body" \
             --silent --show-error || echo -e "${YELLOW}Warning: Failed to send notification${NC}"
-    fi
 }
 
 # Parse YAML (basic parser for our config structure)
@@ -190,8 +200,31 @@ cmd_info() {
     [ -n "$notes" ] && echo -e "${YELLOW}Notes:${NC} $notes"
 }
 
-# Backup a service
+# Backup a service. Runs the actual work (run_backup) in a child process so
+# 'set -e' applies fully — a function called inside 'if' has errexit disabled,
+# which previously let a failed restic step report success. Notifies on
+# failure and pings the push monitor on success.
 cmd_backup() {
+    local service=$1
+    local rc=0
+
+    bash "$0" backup-inner "$service" || rc=$?
+
+    if [ $rc -eq 0 ]; then
+        if [ -n "$BACKUP_PUSH_URL" ]; then
+            curl -fsS -m 10 --retry 2 "${BACKUP_PUSH_URL}?status=up&msg=${service}" > /dev/null || \
+                echo -e "${YELLOW}Warning: Failed to ping push monitor${NC}"
+        fi
+    else
+        send_apprise_notification "❌ Backup failed: $service" \
+            "Backup of '$service' failed on $(hostname) at $(date '+%Y-%m-%d %H:%M:%S').\nCheck the Komodo procedure logs for details." \
+            "failure"
+    fi
+
+    return $rc
+}
+
+run_backup() {
     local service=$1
 
     if ! grep -q "^  $service:" "$CONFIG_FILE"; then
@@ -289,9 +322,6 @@ backup_postgres() {
         --tag "$database"
 
     rm "${dump_file}.gz"
-
-    # Apply retention policy
-    apply_retention "$service"
 }
 
 # Backup MariaDB database
@@ -343,9 +373,6 @@ backup_mariadb() {
         --tag "$database"
 
     rm "${dump_file}.gz"
-
-    # Apply retention policy
-    apply_retention "$service"
 }
 
 # Backup volume(s)
@@ -378,9 +405,6 @@ backup_volume() {
         echo -e "${YELLOW}Starting service...${NC}"
         (cd "$compose_dir" && docker compose up -d)
     fi
-
-    # Apply retention policy
-    apply_retention "$service"
 }
 
 # Backup a single volume
@@ -426,9 +450,6 @@ backup_directory_type() {
         --tag "$service" \
         --tag "directory" \
         --tag "$(basename "$directory")"
-
-    # Apply retention policy
-    apply_retention "$service"
 }
 
 # Backup a directory
@@ -451,7 +472,10 @@ backup_directory() {
         --tag "$(basename "$dir")"
 }
 
-# Apply retention policy
+# Apply retention policy (forget only — marks old snapshots for removal).
+# Deliberately NOT --prune: forget is a cheap metadata operation, while prune
+# is the expensive garbage collection that downloads and repacks data. Prune
+# runs once a week via 'maintenance' instead of once per service per day.
 apply_retention() {
     local service=$1
     local priority=$(parse_yaml "$service" "priority")
@@ -472,8 +496,108 @@ apply_retention() {
         --tag "$service" \
         --keep-daily "$daily" \
         --keep-weekly "$weekly" \
-        --keep-monthly "$monthly" \
-        --prune
+        --keep-monthly "$monthly"
+}
+
+# Copy new snapshots from the primary repository to the offsite replica.
+# Reads from the primary (free when it's a local/rest-server repo) and only
+# uploads to the offsite — B2 uploads are Class A transactions, which are free.
+cmd_sync_offsite() {
+    if [ -z "$RESTIC_REPOSITORY_OFFSITE" ]; then
+        echo -e "${YELLOW}RESTIC_REPOSITORY_OFFSITE not set, skipping offsite sync${NC}"
+        return 0
+    fi
+
+    echo -e "${GREEN}=== Syncing snapshots to offsite repository ===${NC}"
+
+    # First run: initialize the offsite repo with the same chunker parameters
+    # as the primary, so copied data deduplicates properly
+    if ! RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE" restic -r "$RESTIC_REPOSITORY_OFFSITE" cat config > /dev/null 2>&1; then
+        echo "Offsite repository not initialized, creating it..."
+        RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE" restic -r "$RESTIC_REPOSITORY_OFFSITE" init \
+            --from-repo "$RESTIC_REPOSITORY" \
+            --from-password-file <(printf '%s' "$RESTIC_PASSWORD") \
+            --copy-chunker-params
+    fi
+
+    if RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE" restic -r "$RESTIC_REPOSITORY_OFFSITE" copy \
+        --from-repo "$RESTIC_REPOSITORY" \
+        --from-password-file <(printf '%s' "$RESTIC_PASSWORD"); then
+        echo -e "${GREEN}✓ Offsite sync completed${NC}"
+    else
+        send_apprise_notification "❌ Offsite sync failed" \
+            "restic copy to the offsite repository failed on $(hostname) at $(date '+%Y-%m-%d %H:%M:%S')." \
+            "failure"
+        return 1
+    fi
+}
+
+# Weekly maintenance wrapper: child process for correct errexit semantics
+# (same pattern as cmd_backup), plus notifications either way.
+cmd_maintenance() {
+    local rc=0
+
+    bash "$0" maintenance-inner || rc=$?
+
+    if [ $rc -eq 0 ]; then
+        send_apprise_notification "✅ Backup maintenance completed" \
+            "Retention, prune and check completed on $(hostname) at $(date '+%Y-%m-%d %H:%M:%S')." \
+            "success"
+    else
+        send_apprise_notification "❌ Backup maintenance failed" \
+            "Maintenance run failed on $(hostname) at $(date '+%Y-%m-%d %H:%M:%S').\nCheck the Komodo procedure logs for details." \
+            "failure"
+    fi
+
+    return $rc
+}
+
+# Apply retention for every service (serialized — forget needs an exclusive
+# lock, so this must not run while parallel backups hold shared locks), then
+# prune and verify the primary, then do the same retention + prune offsite.
+# The offsite 'check' is intentionally omitted: check re-downloads all repo
+# metadata every run, which is expensive on B2 — run it monthly by hand or
+# via Backrest instead.
+run_maintenance() {
+    local services=$(awk '
+        /^  [a-z]/ { service=$1; gsub(/:/, "", service) }
+        /^    priority:/ { print service }
+    ' "$CONFIG_FILE")
+
+    echo -e "${GREEN}=== Primary repository maintenance ===${NC}"
+
+    # Remove stale locks left behind by crashed/killed runs (safe: only
+    # removes locks whose owning process is gone)
+    restic unlock
+
+    for service in $services; do
+        apply_retention "$service"
+    done
+
+    echo "Pruning primary repository..."
+    restic prune
+
+    echo "Checking primary repository..."
+    restic check
+
+    if [ -n "$RESTIC_REPOSITORY_OFFSITE" ]; then
+        echo -e "\n${GREEN}=== Offsite repository maintenance ===${NC}"
+        (
+            export RESTIC_REPOSITORY="$RESTIC_REPOSITORY_OFFSITE"
+            export RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE"
+
+            restic unlock
+
+            for service in $services; do
+                apply_retention "$service"
+            done
+
+            echo "Pruning offsite repository..."
+            restic prune
+        )
+    fi
+
+    echo -e "${GREEN}✓ Maintenance completed${NC}"
 }
 
 # Backup all services
@@ -1101,6 +1225,8 @@ main() {
         echo "  restore <service> [snap]  - Restore a service"
         echo "  snapshots <service>       - List snapshots"
         echo "  add <service>             - Add new service to config"
+        echo "  sync-offsite              - Copy new snapshots to the offsite repository"
+        echo "  maintenance               - Weekly retention + prune + check (both repos)"
         echo ""
         echo "Examples:"
         echo "  $0 list critical"
@@ -1126,8 +1252,23 @@ main() {
             [ $# -lt 1 ] && { echo "Usage: $0 backup <service>"; exit 1; }
             cmd_backup "$@"
             ;;
+        backup-inner)
+            # Internal: actual backup work, run as a child of cmd_backup
+            [ $# -lt 1 ] && { echo "Usage: $0 backup <service>"; exit 1; }
+            run_backup "$@"
+            ;;
         backup-all)
             cmd_backup_all "$@"
+            ;;
+        sync-offsite)
+            cmd_sync_offsite
+            ;;
+        maintenance)
+            cmd_maintenance
+            ;;
+        maintenance-inner)
+            # Internal: actual maintenance work, run as a child of cmd_maintenance
+            run_maintenance
             ;;
         snapshots)
             [ $# -lt 1 ] && { echo "Usage: $0 snapshots <service>"; exit 1; }
