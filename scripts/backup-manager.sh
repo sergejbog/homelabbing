@@ -341,8 +341,7 @@ backup_mariadb() {
     fi
 
     if [ -z "$password" ]; then
-        echo -e "${RED}Error: Could not find MariaDB password${NC}"
-        exit 1
+        password=$(docker exec "$container" printenv MYSQL_PASSWORD 2>/dev/null || true)
     fi
 
     echo "Dumping MariaDB database: $database from $container"
