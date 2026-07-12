@@ -398,7 +398,7 @@ environment = """
   # VARIABLE = value
 SERVICE_NAME = traefik-edge
 ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/traefik.svg
-EDGE_PORT=8090
+EDGE_PORT=8123
 """
 
 ##
