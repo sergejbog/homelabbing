@@ -81,7 +81,7 @@ services:
     user: postgres
     compose_file: services/reactive-resume/docker-compose.yaml
     volumes_also:
-      - reactive_reactive_resume_data
+      - reactive-resume_reactive_resume_data
     notes: "Personal resume builder - backup DB + storage directory"
 
 
