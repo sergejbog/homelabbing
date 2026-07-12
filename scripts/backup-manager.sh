@@ -55,6 +55,13 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
     export RESTIC_REPOSITORY_OFFSITE="${RESTIC_REPOSITORY_OFFSITE:-}"
     export RESTIC_PASSWORD_OFFSITE="${RESTIC_PASSWORD_OFFSITE:-$RESTIC_PASSWORD}"
     export BACKUP_PUSH_URL="${BACKUP_PUSH_URL:-}"
+
+    # Optional: Komodo API credentials (Settings → Api Keys). When set,
+    # restores finish with a proper Komodo stack redeploy instead of a bare
+    # 'docker compose up -d' that leaves Komodo's stack state stale.
+    export KOMODO_URL="${KOMODO_URL:-}"
+    export KOMODO_API_KEY="${KOMODO_API_KEY:-}"
+    export KOMODO_API_SECRET="${KOMODO_API_SECRET:-}"
 else
     echo "❌ Error: ${SCRIPT_DIR}/.env not found"
     echo "Please create it with APPRISE_URL, APPRISE_CONFIG, and APPRISE_LOGIN"
@@ -67,8 +74,8 @@ send_apprise_notification() {
     local body="$2"
     local type="${3:-info}"  # info, success, warning, failure
 
-    if [ -z "${NTFY_URLY:-}" ]; then
-        echo -e "${YELLOW}Warning: NTFY_URLY not set, skipping notification${NC}"
+    if [ -z "${NTFY_URL:-}" ]; then
+        echo -e "${YELLOW}Warning: NTFY_URL not set, skipping notification${NC}"
         return 0
     fi
 
@@ -76,7 +83,7 @@ send_apprise_notification() {
     body+="\n\n[View Backup Logs]($logs_link)"
 
     # Send notification using apprise CLI or curl
-    curl -X POST "$NTFY_URLY/homelab-backup" \
+    curl -X POST "$NTFY_URL/homelab-backup" \
             -u "$NTFY_LOGIN" \
             -H "Title: $title" \
             -H "Tags: white_check_mark,floppy_disk" \
@@ -698,6 +705,91 @@ cmd_snapshots() {
     restic snapshots --tag "$service" --compact
 }
 
+# --- Restore orchestration helpers ------------------------------------------
+
+# Make sure the service folder has a .env before compose runs. Komodo's
+# post-deploy hook deletes .env after every deploy, so on restore it is
+# normally missing — fetch it from Infisical exactly like the pre-deploy hook
+# does. A .env that is already present (e.g. placed by hand during disaster
+# recovery, before Infisical itself is back) is left untouched.
+ensure_service_env() {
+    local compose_dir=$1
+    local service_dir=$(basename "$compose_dir")
+
+    if [ -f "$compose_dir/.env" ]; then
+        echo "Using existing .env in $compose_dir"
+        return 0
+    fi
+
+    echo "Fetching .env from Infisical for: $service_dir"
+    if ! bash "$SCRIPT_DIR/fetch-secrets-pre-deploy.sh" "$service_dir"; then
+        echo -e "${YELLOW}Warning: could not fetch .env from Infisical — continuing without it${NC}"
+    fi
+}
+
+# Bring the stack up before restoring so containers and named volumes exist
+# (the fresh-host case, where restore used to fail until you ran compose up
+# by hand). Tolerant on purpose: if the stack is already running or compose
+# can't start it, the restore continues against whatever is running.
+ensure_stack_up() {
+    local compose_dir=$1
+
+    echo "Ensuring containers and volumes exist (docker compose up -d)..."
+    if ! (cd "$compose_dir" && docker compose up -d); then
+        echo -e "${YELLOW}Warning: docker compose up failed — continuing with currently running containers${NC}"
+    fi
+}
+
+# Wait for a freshly started database container to accept connections
+wait_for_db() {
+    local container=$1
+    local type=$2
+
+    echo "Waiting for $container to accept connections..."
+    for _ in $(seq 1 30); do
+        if [ "$type" = "postgres" ]; then
+            docker exec "$container" pg_isready -q > /dev/null 2>&1 && return 0
+        else
+            docker exec "$container" sh -c 'mariadb-admin ping --silent || mysqladmin ping --silent' > /dev/null 2>&1 && return 0
+        fi
+        sleep 2
+    done
+
+    echo -e "${YELLOW}Warning: $container not ready after 60s — attempting restore anyway${NC}"
+}
+
+# Hand the service back to Komodo after a restore. A Komodo redeploy runs the
+# stack's own pre-deploy secret fetch and keeps the stack state in sync — a
+# bare 'docker compose up -d' would leave Komodo showing a stale deployment
+# and require a manual "Redeploy" click. Falls back to compose when the
+# Komodo API isn't configured or reachable (e.g. Komodo itself is down).
+redeploy_stack() {
+    local service=$1
+    local compose_dir=$2
+    local stack=$(parse_yaml "$service" "komodo_stack")
+    stack=${stack:-$service}
+
+    if [ -n "$KOMODO_URL" ] && [ -n "$KOMODO_API_KEY" ]; then
+        echo "Triggering Komodo redeploy of stack: $stack"
+        if curl -fsS -m 30 -X POST "${KOMODO_URL%/}/execute" \
+            -H "X-Api-Key: $KOMODO_API_KEY" \
+            -H "X-Api-Secret: $KOMODO_API_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{\"type\":\"DeployStack\",\"params\":{\"stack\":\"$stack\"}}" > /dev/null; then
+            echo -e "${GREEN}✓ Komodo redeploy triggered for: $stack${NC}"
+            return 0
+        fi
+        echo -e "${YELLOW}Warning: Komodo API redeploy failed — falling back to docker compose${NC}"
+    else
+        echo -e "${YELLOW}KOMODO_URL/KOMODO_API_KEY not set — starting via docker compose (remember to Redeploy in Komodo)${NC}"
+    fi
+
+    # --force-recreate mirrors what a Komodo redeploy does: running app
+    # containers are restarted so none keep stale connections to the
+    # pre-restore data.
+    (cd "$compose_dir" && docker compose up -d --force-recreate)
+}
+
 # Restore service
 cmd_restore() {
     local service=$1
@@ -709,6 +801,15 @@ cmd_restore() {
     fi
 
     local type=$(parse_yaml "$service" "type")
+
+    # Directory-type services (komodo) restore through their own tooling —
+    # Komodo needs the backup folder mounted into the komodo-cli container.
+    # See BACKUP-GUIDE.md "Emergency Recovery" for the exact steps.
+    if [ "$type" = "directory" ]; then
+        echo -e "${RED}'$service' is a directory-type backup and has no automatic restore.${NC}"
+        echo "Follow the manual steps in scripts/BACKUP-GUIDE.md (Emergency Recovery)."
+        exit 1
+    fi
 
     # If no snapshot specified, show available snapshots and prompt
     if [ -z "$snapshot_id" ]; then
@@ -742,13 +843,22 @@ cmd_restore() {
         exit 0
     fi
 
-    local type=$(parse_yaml "$service" "type")
+    # Make the restore self-sufficient: fetch the .env (compose interpolation
+    # and DB passwords need it) and create containers + volumes before restic
+    # writes anything, so a restore works on a freshly provisioned host too.
+    local compose=$(parse_yaml "$service" "compose_file")
+    local compose_dir="$ROOT_DIR/$(dirname "$compose")"
+
+    ensure_service_env "$compose_dir"
+    ensure_stack_up "$compose_dir"
 
     case "$type" in
         postgres)
+            wait_for_db "$(parse_yaml "$service" "container")" "$type"
             restore_postgres "$service" "$snapshot_id"
             ;;
         mariadb)
+            wait_for_db "$(parse_yaml "$service" "container")" "$type"
             restore_mariadb "$service" "$snapshot_id"
             ;;
         volume)
@@ -872,6 +982,12 @@ cmd_restore() {
             rm -rf "$restore_dir"
         done
     fi
+
+    # Bring the service back through Komodo (or compose fallback) so every
+    # container starts fresh against the restored data and the Komodo stack
+    # state stays in sync — no manual "Redeploy" needed anymore.
+    echo ""
+    redeploy_stack "$service" "$compose_dir"
 
     echo -e "\n${GREEN}✓ Restore completed for: $service${NC}"
 }
@@ -1143,8 +1259,9 @@ restore_volume() {
     echo "Cleaning up temporary files..."
     rm -rf "$restore_dir"
 
-    echo -e "${YELLOW}Starting service...${NC}"
-    (cd "$compose_dir" && docker compose up -d)
+    # Deliberately left stopped: cmd_restore still restores any additional
+    # volumes/directories, then brings the stack back via redeploy_stack.
+    echo -e "${YELLOW}Service left stopped until all restores finish...${NC}"
 }
 
 # Add new service

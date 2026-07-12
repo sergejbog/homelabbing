@@ -42,6 +42,23 @@ else
     exit 1
 fi
 
+# During disaster recovery the public API URL may be unreachable — it routes
+# through traefik, which itself needs a .env fetched from Infisical. Break the
+# cycle: if the configured URL doesn't answer, talk to the infisical-backend
+# container directly over the docker bridge. Normal deploys are unaffected
+# (the reachability probe succeeds and nothing changes).
+api_base="${INFISICAL_API_URL%/}"
+api_base="${api_base%/api}"
+if ! curl -fsS -m 5 "${api_base}/api/status" > /dev/null 2>&1; then
+    backend_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' infisical-backend 2>/dev/null || true)
+    if [ -n "$backend_ip" ]; then
+        echo "⚠️  ${INFISICAL_API_URL} unreachable — using infisical-backend container directly"
+        export INFISICAL_API_URL="http://${backend_ip}:8080/api"
+    else
+        echo "⚠️  ${INFISICAL_API_URL} unreachable and no local infisical-backend container found"
+    fi
+fi
+
 # Authenticate with Infisical using universal auth
 echo "🔑 Authenticating with Infisical..."
 export INFISICAL_TOKEN=$($INFISICAL_BIN login \
