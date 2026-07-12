@@ -945,7 +945,8 @@ enabled = true
 executions = [
   { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "n8n", enabled = true },
   { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "bookstack", enabled = true },
-  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "chatwoot", enabled = true }
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "chatwoot", enabled = true },
+  { execution.type = "RunAction", execution.params.action = "Backup-Service", execution.params.args.service = "grafana-stack", enabled = true }
 ]
 
 [[procedure.config.stage]]
