@@ -18,13 +18,6 @@ http:
         - https
       tls:
         certResolver: myresolver
-    homeassistant:
-      rule: Host(`home-assistant.{{ env "DOMAIN_NAME" }}`)
-      service: homeassistant
-      entryPoints:
-        - https
-      tls:
-        certResolver: myresolver
     firefly:
       rule: Host(`finance.{{ env "DOMAIN_NAME" }}`)
       service: firefly
@@ -68,10 +61,6 @@ http:
       loadBalancer:
         servers:
           - url: http://{{ env "WIREGUARD_PEER_IP" }}:80
-    homeassistant:
-      loadBalancer:
-        servers:
-          - url: http://{{ env "WIREGUARD_PEER_IP" }}:8123 # Peer's WireGuard IP + container port
     firefly:
       loadBalancer:
         servers:
