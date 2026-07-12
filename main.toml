@@ -398,7 +398,7 @@ post_deploy.command = """
 [[stack]]
 name = "ipfs"
 [stack.config]
-server = "Local"
+server = "ex44"
 linked_repo = "homelabbing"
 run_directory = "services/ipfs"
 file_paths = ["docker-compose.yml"]
