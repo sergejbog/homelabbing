@@ -708,6 +708,9 @@ run_directory = "services/restic-server"
 file_paths = ["docker-compose.yaml"]
 environment = """
   # VARIABLE = value
+  # EDGE_SKIP: not routed by the central traefik — same compose (and hostname)
+  # as the ex44 restic-server; reached directly over WireGuard if needed.
+EDGE_SKIP=true
 SERVICE_NAME = restic-server
 ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/restic.svg
 """
@@ -759,6 +762,32 @@ sh ./cleanup-secrets-post-deploy.sh tandoor
 environment = """
   # VARIABLE = value
 SERVICE_NAME = tandoor
+"""
+
+##
+
+[[stack]]
+name = "traefik"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/traefik"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Fetch secrets, then regenerate routes for stacks hosted on other servers
+  # (services/traefik/dynamic/edge-routes.yaml) from this file.
+  sh ./fetch-secrets-pre-deploy.sh traefik
+  sh ./generate-edge-routes.sh
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+sh ./cleanup-secrets-post-deploy.sh traefik
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = traefik
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/traefik.svg
 """
 
 ##
@@ -1232,7 +1261,7 @@ var stacks = await komodo.read('ListStacks', {})
 console.log(stacks)
 
 var filteredStacks = stacks
-  .filter(stack => !stack.template && stack.name !== 'komodo' && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
+  .filter(stack => !stack.template && !['komodo', 'traefik'].includes(stack.name) && ['running', 'unhealthy', 'unknown', 'stopped'].includes(stack.info.state))
   .map(stack => [stack.id, stack.name])
 
 
@@ -1240,6 +1269,18 @@ for (const [id, name] of filteredStacks) {
   console.log(`Processing stack: ${name} (${id})`)
   const res = await komodo.execute('DeployStackIfChanged', { stack: id })
   console.log(res);
+}
+
+// Always deploy traefik LAST: its pre_deploy regenerates dynamic/edge-routes.yaml
+// from main.toml, so hostname->server routes never go stale even when only
+// main.toml changed (traefik's own files unchanged => DeployStackIfChanged
+// would skip it). compose up -d is a no-op when nothing changed, and the
+// file-provider directory watch hot-reloads route changes without a restart.
+const traefik = stacks.find(s => s.name === 'traefik')
+if (traefik) {
+  console.log(`Deploying traefik (${traefik.id}) to refresh edge routes`)
+  const res = await komodo.execute('DeployStack', { stack: traefik.id })
+  console.log(res)
 }
 """
 
