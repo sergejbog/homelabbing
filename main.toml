@@ -86,7 +86,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/bookstack.
 [[stack]]
 name = "budibase"
 [stack.config]
-server = "Local"
+server = "ex44"
 linked_repo = "homelabbing"
 run_directory = "services/budibase"
 file_paths = ["docker-compose.yaml"]
@@ -740,11 +740,6 @@ SERVICE_NAME = tandoor
 
 ##
 
-# Per-server Traefik edge template (see services/traefik-edge/README.md).
-# To add Traefik to a new server: copy this block, drop `template = true`,
-# set `server` and the EDGE_NAME line — same files, no manual bootstrap.
-# NOT deployed on ex44: Coolify's proxy already owns 443 there and acts as
-# the edge instead (one-time customization documented in the README).
 [[stack]]
 name = "traefik-edge-template"
 template = true
@@ -1042,6 +1037,69 @@ executions = [
 ##
 
 [[action]]
+name = "Backup-Maintenance"
+description = "Runs backup-manager.sh maintenance commands. Pass ARGS.command = 'maintenance' (weekly retention + prune + check) or 'sync-offsite' (copy new snapshots to the offsite repo). Optional ARGS.server (default: Local)."
+[action.config]
+file_contents = """
+const command: string = ARGS.command ?? 'maintenance';
+const serverName: string = ARGS.server ?? 'Local';
+
+const allowed = ['maintenance', 'sync-offsite'];
+if (!allowed.includes(command)) {
+    throw new Error(`Unsupported command: '${command}'. Allowed: ${allowed.join(', ')}`);
+}
+
+const scriptPath = '/etc/komodo/repos/homelabbing/scripts/backup-manager.sh';
+
+const servers = await komodo.read('ListServers', {});
+const server = servers.find((s: any) => s.name === serverName);
+if (!server) {
+    throw new Error(`Server not found: '${serverName}'`);
+}
+
+const terminalName = `backup-${command}-${Date.now()}`;
+await komodo.write('CreateTerminal', {
+    name: terminalName,
+    server: serverName,
+    command: "bash"
+});
+
+// Same two timeout layers as Backup-Service, with a larger budget since
+// prune can take longer than a backup.
+let timer;
+const timedOut = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`'${command}' exceeded 3 hours, aborting`)), 185 * 60 * 1000);
+});
+
+try {
+    const cmd = `nsenter -t 1 -m -n -- timeout -k 60 10800 bash ${scriptPath} ${command}`;
+
+    console.log(`Running: ${scriptPath} ${command} on ${serverName}`);
+    let exitCode = null;
+    await Promise.race([
+        komodo.execute_terminal({
+            command: cmd,
+            server: server.id,
+            terminal: terminalName
+        }, {
+            onLine: (line) => console.log(line),
+            onFinish: (code) => { console.log("Finished:", code); exitCode = code; },
+        }),
+        timedOut,
+    ]);
+    if (String(exitCode) !== '0') {
+        throw new Error(`'${command}' exited with code ${exitCode}`);
+    }
+    console.log(`✓ ${command} completed`);
+} finally {
+    clearTimeout(timer);
+    await komodo.write('DeleteTerminal', { terminal: terminalName, server: server.id });
+}
+"""
+
+##
+
+[[action]]
 name = "Backup-Service"
 description = "Backs up a single service by routing to the correct server via Komodo Periphery. Pass ARGS.service = <service name from backup-config.yml>."
 [action.config]
@@ -1116,69 +1174,6 @@ try {
     clearTimeout(timer);
     // Always clean up the terminal even if backup fails
     await komodo.write('DeleteTerminal', { terminal: terminalName, server: serverId });
-}
-"""
-
-##
-
-[[action]]
-name = "Backup-Maintenance"
-description = "Runs backup-manager.sh maintenance commands. Pass ARGS.command = 'maintenance' (weekly retention + prune + check) or 'sync-offsite' (copy new snapshots to the offsite repo). Optional ARGS.server (default: Local)."
-[action.config]
-file_contents = """
-const command: string = ARGS.command ?? 'maintenance';
-const serverName: string = ARGS.server ?? 'Local';
-
-const allowed = ['maintenance', 'sync-offsite'];
-if (!allowed.includes(command)) {
-    throw new Error(`Unsupported command: '${command}'. Allowed: ${allowed.join(', ')}`);
-}
-
-const scriptPath = '/etc/komodo/repos/homelabbing/scripts/backup-manager.sh';
-
-const servers = await komodo.read('ListServers', {});
-const server = servers.find((s: any) => s.name === serverName);
-if (!server) {
-    throw new Error(`Server not found: '${serverName}'`);
-}
-
-const terminalName = `backup-${command}-${Date.now()}`;
-await komodo.write('CreateTerminal', {
-    name: terminalName,
-    server: serverName,
-    command: "bash"
-});
-
-// Same two timeout layers as Backup-Service, with a larger budget since
-// prune can take longer than a backup.
-let timer;
-const timedOut = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`'${command}' exceeded 3 hours, aborting`)), 185 * 60 * 1000);
-});
-
-try {
-    const cmd = `nsenter -t 1 -m -n -- timeout -k 60 10800 bash ${scriptPath} ${command}`;
-
-    console.log(`Running: ${scriptPath} ${command} on ${serverName}`);
-    let exitCode = null;
-    await Promise.race([
-        komodo.execute_terminal({
-            command: cmd,
-            server: server.id,
-            terminal: terminalName
-        }, {
-            onLine: (line) => console.log(line),
-            onFinish: (code) => { console.log("Finished:", code); exitCode = code; },
-        }),
-        timedOut,
-    ]);
-    if (String(exitCode) !== '0') {
-        throw new Error(`'${command}' exited with code ${exitCode}`);
-    }
-    console.log(`✓ ${command} completed`);
-} finally {
-    clearTimeout(timer);
-    await komodo.write('DeleteTerminal', { terminal: terminalName, server: server.id });
 }
 """
 
