@@ -76,8 +76,8 @@ services:
     priority: high
     type: volume
     volumes:
-      - main-data
-      - tempo-data
+      - grafana-stack_main-data
+      - grafana-stack_tempo-data
     compose_file: services/grafana/docker-compose.yml
     notes: "Monitoring stack - metrics can be rebuilt"
 
