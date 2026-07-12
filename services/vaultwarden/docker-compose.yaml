@@ -4,6 +4,8 @@ services:
     container_name: vaultwarden
     restart: unless-stopped
     env_file: .env
+    ports:
+      - "80:80"
     volumes:
       - vw-data:/data/
     labels:
