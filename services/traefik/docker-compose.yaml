@@ -6,6 +6,7 @@ services:
     env_file: .env
     # Enables the web UI and tells Traefik to listen to docker
     ports:
+      - "80:80" # http->https redirect; also serves redirects for hostnames whose services live on other servers
       - "443:443"
       - "5432:5432"
       - "3306:3306"
@@ -24,9 +25,12 @@ services:
       - "traefik.http.routers.traefik-secure.service=api@internal"
 
     volumes:
-      - "./letsencrypt:/letsencrypt"
+      # Absolute path (not repo-relative) so acme.json survives a Komodo re-clone
+      - "/etc/komodo/traefik/letsencrypt:/letsencrypt"
       - "./traefik.yaml:/traefik.yaml:ro"
-      - "./config.yaml:/config.yaml:ro"
+      # Directory mount (not single files) so git pulls / regeneration swap
+      # file inodes without breaking the file-provider watch
+      - "./dynamic:/dynamic:ro"
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /etc/localtime:/etc/localtime:ro
@@ -42,7 +46,6 @@ services:
           - wiki.${DOMAIN_NAME}
           - tools.${DOMAIN_NAME}
           - change.${DOMAIN_NAME}
-          - budibase.${DOMAIN_NAME}
           - backrest.${DOMAIN_NAME}
           - vw.${DOMAIN_NAME}
           - secrets.${DOMAIN_NAME}
@@ -51,6 +54,7 @@ services:
           - wallos.${DOMAIN_NAME}
           - glance.${DOMAIN_NAME}
           - ex44.periphery.${DOMAIN_NAME}
+    restart: unless-stopped
 
 networks:
   proxy:

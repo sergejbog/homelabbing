@@ -10,8 +10,14 @@ Local (`services/traefik`):
 - external docker network `proxy`
 - middlewares `admin-auth@file` and `AddForwardedHeader@file`
 
-Per service, the only external requirement is a Route53 A record pointing the
-service's hostname at the IP of the server that hosts it.
+**DNS/routing model:** no per-service DNS records. A wildcard record points
+`*.{DOMAIN_NAME}` at the central Traefik on Local, which forwards each
+hostname to the hosting server's edge over the WireGuard mesh — the routes are
+auto-generated from `main.toml` (see `services/traefik/README.md`). Public TLS
+terminates at central (wildcard cert via DNS-01); this edge's own certs are
+only seen by central, which doesn't validate them (`insecureSkipVerify`), so
+its ACME resolver is effectively vestigial — kept because service labels
+reference `myresolver`.
 
 ## Path 1 — server without an existing proxy: deploy this stack
 

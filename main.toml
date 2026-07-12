@@ -708,6 +708,9 @@ run_directory = "services/restic-server"
 file_paths = ["docker-compose.yaml"]
 environment = """
   # VARIABLE = value
+  # EDGE_SKIP: not routed by the central traefik — same compose (and hostname)
+  # as the ex44 restic-server; reached directly over WireGuard if needed.
+EDGE_SKIP=true
 SERVICE_NAME = restic-server
 ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/restic.svg
 """
@@ -759,6 +762,32 @@ sh ./cleanup-secrets-post-deploy.sh tandoor
 environment = """
   # VARIABLE = value
 SERVICE_NAME = tandoor
+"""
+
+##
+
+[[stack]]
+name = "traefik"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/traefik"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Fetch secrets, then regenerate routes for stacks hosted on other servers
+  # (services/traefik/dynamic/edge-routes.yaml) from this file.
+  sh ./fetch-secrets-pre-deploy.sh traefik
+  sh ./generate-edge-routes.sh
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+sh ./cleanup-secrets-post-deploy.sh traefik
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = traefik
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/traefik.svg
 """
 
 ##

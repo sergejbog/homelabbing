@@ -9,7 +9,6 @@ periphery_root_directory: /etc/komodo
 # Derived paths
 scripts_env_path: "{{ komodo_repo_path }}/scripts/.env"
 infisical_env_path: "{{ komodo_repo_path }}/services/infisical/.env"
-traefik_env_path: "{{ komodo_repo_path }}/services/traefik/.env"
 komodo_env_path: "{{ komodo_repo_path }}/services/komodo/.env"
 
 # Komodo / Periphery config (non-identifying)

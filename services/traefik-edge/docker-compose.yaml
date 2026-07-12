@@ -13,7 +13,9 @@
 #      No new files needed.
 #   2. Make sure the server has the `proxy` docker network and
 #      /etc/komodo/bin/infisical (needed by fetch-secrets-pre-deploy.sh).
-#   3. Point one Route53 A record per hosted service at that server's IP.
+#   3. Add the server's backhaul case to scripts/generate-edge-routes.sh so
+#      the central Traefik forwards its hostnames (no DNS records needed —
+#      the *.{DOMAIN_NAME} wildcard already points at central).
 #
 # EXCEPTION: servers already running Coolify (ex44). Coolify's proxy owns
 # 80/443 there — do NOT deploy this stack on those; customize Coolify's own
