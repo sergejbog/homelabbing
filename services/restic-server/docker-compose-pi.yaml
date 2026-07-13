@@ -2,7 +2,7 @@ services:
   restic-server:
     image: restic/rest-server:latest
     container_name: restic-server-pi
-    hostname: restic-server
+    hostname: restic-server-pi
     # Authentication is enabled by default via /data/.htpasswd.
     # One-time setup after first deploy:
     #   docker exec -it restic-server create_user backups '<strong-password>'
@@ -11,7 +11,7 @@ services:
     volumes:
       - restic_server_data:/data
     labels:
-      - "traefik.http.routers.restic-server.rule=Host(`restic-pi.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.restic-server-pi.rule=Host(`restic-pi.${DOMAIN_NAME}`)"
     restart: unless-stopped
     ports:
       - "10.49.0.2:8000:8000"
