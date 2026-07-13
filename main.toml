@@ -724,12 +724,11 @@ name = "restic-server-pi"
 server = "raspberry-pi"
 linked_repo = "homelabbing"
 run_directory = "services/restic-server"
-file_paths = ["docker-compose.yaml"]
+file_paths = ["docker-compose-pi.yaml"]
 environment = """
   # VARIABLE = value
   # EDGE_SKIP: not routed by the central traefik — same compose (and hostname)
   # as the ex44 restic-server; reached directly over WireGuard if needed.
-EDGE_SKIP=true
 SERVICE_NAME = restic-server
 ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/restic.svg
 """
@@ -792,6 +791,10 @@ server = "Local"
 linked_repo = "homelabbing"
 run_directory = "services/traefik"
 file_paths = ["docker-compose.yaml"]
+config_files = [
+  { path = "dynamic/config.yaml" },
+  { path = "traefik.yaml" }
+]
 pre_deploy.path = "../../scripts"
 pre_deploy.command = """
   # Fetch secrets, then regenerate routes for stacks hosted on other servers
