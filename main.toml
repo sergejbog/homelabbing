@@ -1286,7 +1286,7 @@ var filteredStacks = stacks
 
 for (const [id, name] of filteredStacks) {
   console.log(`Processing stack: ${name} (${id})`)
-  const res = await komodo.execute('DeployStackIfChanged', { stack: id })
+  const res = await komodo.execute_and_poll('DeployStackIfChanged', { stack: id })
   console.log(res);
 }
 
@@ -1295,10 +1295,12 @@ for (const [id, name] of filteredStacks) {
 // main.toml changed (traefik's own files unchanged => DeployStackIfChanged
 // would skip it). compose up -d is a no-op when nothing changed, and the
 // file-provider directory watch hot-reloads route changes without a restart.
+// execute_and_poll waits for each deploy to finish, so stacks deploy
+// sequentially, traefik truly runs last, and failures show in this log.
 const traefik = stacks.find(s => s.name === 'traefik')
 if (traefik) {
   console.log(`Deploying traefik (${traefik.id}) to refresh edge routes`)
-  const res = await komodo.execute('DeployStack', { stack: traefik.id })
+  const res = await komodo.execute_and_poll('DeployStack', { stack: traefik.id })
   console.log(res)
 }
 """
