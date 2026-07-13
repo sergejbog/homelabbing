@@ -10,8 +10,6 @@ services:
     #   rest:https://backups:<strong-password>@restic.${DOMAIN_NAME}/
     volumes:
       - restic_server_data:/data
-    networks:
-      - proxy
     labels:
       - "traefik.http.routers.restic-server.rule=Host(`restic-pi.${DOMAIN_NAME}`)"
     restart: unless-stopped
