@@ -29,6 +29,9 @@
     - title: Change Detection
       url: https://change.${DOMAIN_NAME}
       icon: sh:changedetection
+    - title: Degoog
+      url: https://degoog.${DOMAIN_NAME}
+      icon: sh:degoog
     - title: n8n
       url: https://automation.${DOMAIN_NAME}
       icon: sh:n8n
