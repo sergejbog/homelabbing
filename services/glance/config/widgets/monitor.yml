@@ -35,6 +35,9 @@
     - title: Budibase
       url: https://budibase.${DOMAIN_NAME}
       icon: sh:budibase
+    - title: Reactive Resume
+      url: https://resume.${DOMAIN_NAME}
+      icon: sh:reactive-resume
     - title: Backrest
       url: https://backrest.${DOMAIN_NAME}
       icon: sh:backrest
