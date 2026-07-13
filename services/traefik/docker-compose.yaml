@@ -37,23 +37,6 @@ services:
       - ./logs:/var/log/traefik
     networks:
       proxy:
-        aliases:
-          - automation.${DOMAIN_NAME}
-          - chatwoot.${DOMAIN_NAME}
-          - komodo.${DOMAIN_NAME}
-          - traefik.${DOMAIN_NAME}
-          - uptime-kuma.${DOMAIN_NAME}
-          - wiki.${DOMAIN_NAME}
-          - tools.${DOMAIN_NAME}
-          - change.${DOMAIN_NAME}
-          - backrest.${DOMAIN_NAME}
-          - vw.${DOMAIN_NAME}
-          - secrets.${DOMAIN_NAME}
-          - notifications.${DOMAIN_NAME}
-          - apprise.${DOMAIN_NAME}
-          - wallos.${DOMAIN_NAME}
-          - glance.${DOMAIN_NAME}
-          - ex44.periphery.${DOMAIN_NAME}
     restart: unless-stopped
 
 networks:
