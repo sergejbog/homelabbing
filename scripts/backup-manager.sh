@@ -50,10 +50,12 @@ if [ -f "${SCRIPT_DIR}/.env" ]; then
     export RESTIC_CACHE_DIR="${RESTIC_CACHE_DIR:-/var/cache/restic}"
     mkdir -p "$RESTIC_CACHE_DIR"
 
-    # Optional: offsite replica repository (see 'sync-offsite') and
+    # Optional: offsite replica repositories (see 'sync-offsite') and
     # Uptime Kuma push monitor URL (dead man's switch)
     export RESTIC_REPOSITORY_OFFSITE="${RESTIC_REPOSITORY_OFFSITE:-}"
     export RESTIC_PASSWORD_OFFSITE="${RESTIC_PASSWORD_OFFSITE:-$RESTIC_PASSWORD}"
+    export RESTIC_REPOSITORY_OFFSITE2="${RESTIC_REPOSITORY_OFFSITE2:-}"
+    export RESTIC_PASSWORD_OFFSITE2="${RESTIC_PASSWORD_OFFSITE2:-$RESTIC_PASSWORD}"
     export BACKUP_PUSH_URL="${BACKUP_PUSH_URL:-}"
 
     # Optional: Komodo API credentials (Settings → Api Keys). When set,
@@ -519,34 +521,51 @@ apply_retention() {
 # Copy new snapshots from the primary repository to the offsite replica.
 # Reads from the primary (free when it's a local/rest-server repo) and only
 # uploads to the offsite — B2 uploads are Class A transactions, which are free.
-cmd_sync_offsite() {
-    if [ -z "$RESTIC_REPOSITORY_OFFSITE" ]; then
-        echo -e "${YELLOW}RESTIC_REPOSITORY_OFFSITE not set, skipping offsite sync${NC}"
-        return 0
-    fi
+# sync_to_repo <repo> <password> <label>: copy the primary repository's
+# snapshots into one offsite target, initializing it on first run
+sync_to_repo() {
+    local repo=$1 password=$2 label=$3
 
-    echo -e "${GREEN}=== Syncing snapshots to offsite repository ===${NC}"
+    echo -e "${GREEN}=== Syncing snapshots to ${label} repository ===${NC}"
 
     # First run: initialize the offsite repo with the same chunker parameters
     # as the primary, so copied data deduplicates properly
-    if ! RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE" restic -r "$RESTIC_REPOSITORY_OFFSITE" cat config > /dev/null 2>&1; then
-        echo "Offsite repository not initialized, creating it..."
-        RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE" restic -r "$RESTIC_REPOSITORY_OFFSITE" init \
+    if ! RESTIC_PASSWORD="$password" restic -r "$repo" cat config > /dev/null 2>&1; then
+        echo "${label} repository not initialized, creating it..."
+        RESTIC_PASSWORD="$password" restic -r "$repo" init \
             --from-repo "$RESTIC_REPOSITORY" \
             --from-password-file <(printf '%s' "$RESTIC_PASSWORD") \
             --copy-chunker-params
     fi
 
-    if RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE" restic -r "$RESTIC_REPOSITORY_OFFSITE" copy \
+    if RESTIC_PASSWORD="$password" restic -r "$repo" copy \
         --from-repo "$RESTIC_REPOSITORY" \
         --from-password-file <(printf '%s' "$RESTIC_PASSWORD"); then
-        echo -e "${GREEN}✓ Offsite sync completed${NC}"
+        echo -e "${GREEN}✓ ${label} sync completed${NC}"
     else
         send_apprise_notification "❌ Offsite sync failed" \
-            "restic copy to the offsite repository failed on $(hostname) at $(date '+%Y-%m-%d %H:%M:%S')." \
+            "restic copy to the ${label} repository failed on $(hostname) at $(date '+%Y-%m-%d %H:%M:%S')." \
             "failure"
         return 1
     fi
+}
+
+# Sync to every configured offsite repo; a failure on one target doesn't
+# skip the others, but the command still exits non-zero
+cmd_sync_offsite() {
+    if [ -z "$RESTIC_REPOSITORY_OFFSITE" ] && [ -z "$RESTIC_REPOSITORY_OFFSITE2" ]; then
+        echo -e "${YELLOW}No offsite repository configured, skipping offsite sync${NC}"
+        return 0
+    fi
+
+    local rc=0
+    if [ -n "$RESTIC_REPOSITORY_OFFSITE" ]; then
+        sync_to_repo "$RESTIC_REPOSITORY_OFFSITE" "$RESTIC_PASSWORD_OFFSITE" "offsite" || rc=1
+    fi
+    if [ -n "$RESTIC_REPOSITORY_OFFSITE2" ]; then
+        sync_to_repo "$RESTIC_REPOSITORY_OFFSITE2" "$RESTIC_PASSWORD_OFFSITE2" "offsite-2" || rc=1
+    fi
+    return $rc
 }
 
 # Weekly maintenance wrapper: child process for correct errexit semantics
@@ -598,23 +617,34 @@ run_maintenance() {
     restic check
 
     if [ -n "$RESTIC_REPOSITORY_OFFSITE" ]; then
-        echo -e "\n${GREEN}=== Offsite repository maintenance ===${NC}"
-        (
-            export RESTIC_REPOSITORY="$RESTIC_REPOSITORY_OFFSITE"
-            export RESTIC_PASSWORD="$RESTIC_PASSWORD_OFFSITE"
-
-            restic unlock
-
-            for service in $services; do
-                apply_retention "$service"
-            done
-
-            echo "Pruning offsite repository..."
-            restic prune
-        )
+        maintain_offsite_repo "$RESTIC_REPOSITORY_OFFSITE" "$RESTIC_PASSWORD_OFFSITE" "offsite" "$services"
+    fi
+    if [ -n "$RESTIC_REPOSITORY_OFFSITE2" ]; then
+        maintain_offsite_repo "$RESTIC_REPOSITORY_OFFSITE2" "$RESTIC_PASSWORD_OFFSITE2" "offsite-2" "$services"
     fi
 
     echo -e "${GREEN}✓ Maintenance completed${NC}"
+}
+
+# maintain_offsite_repo <repo> <password> <label> <services>: retention +
+# prune for one offsite replica (no 'check' — see run_maintenance comment)
+maintain_offsite_repo() {
+    local repo=$1 password=$2 label=$3 services=$4
+
+    echo -e "\n${GREEN}=== ${label} repository maintenance ===${NC}"
+    (
+        export RESTIC_REPOSITORY="$repo"
+        export RESTIC_PASSWORD="$password"
+
+        restic unlock
+
+        for service in $services; do
+            apply_retention "$service"
+        done
+
+        echo "Pruning ${label} repository..."
+        restic prune
+    )
 }
 
 # Backup all services
