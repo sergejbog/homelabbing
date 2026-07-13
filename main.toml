@@ -722,6 +722,7 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/restic.svg
 name = "restic-server-pi"
 [stack.config]
 server = "raspberry-pi"
+project_name = "restic-server-pi"
 linked_repo = "homelabbing"
 run_directory = "services/restic-server"
 file_paths = ["docker-compose-pi.yaml"]
