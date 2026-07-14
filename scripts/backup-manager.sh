@@ -506,8 +506,8 @@ apply_retention() {
 
     # Use defaults if not found
     daily=${daily:-1}
-    weekly=${weekly:-3}
-    monthly=${monthly:-5}
+    weekly=${weekly:-1}
+    monthly=${monthly:-2}
 
     echo "Applying retention policy (daily:$daily weekly:$weekly monthly:$monthly)..."
 
