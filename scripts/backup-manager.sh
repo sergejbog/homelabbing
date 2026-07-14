@@ -337,7 +337,9 @@ backup_postgres() {
         --tag "$service" \
         --tag "database" \
         --tag "postgres" \
-        --tag "$database"
+        --tag "$database" \
+        --tag plan:postgres \
+        --tag created-by:hetzner-cloud
 
     rm "${dump_file}.gz"
 }
@@ -389,7 +391,9 @@ backup_mariadb() {
         --tag "$service" \
         --tag "database" \
         --tag "mariadb" \
-        --tag "$database"
+        --tag "$database" \
+        --tag plan:mariadb \
+        --tag created-by:hetzner-cloud
 
     rm "${dump_file}.gz"
 }
@@ -445,7 +449,9 @@ backup_single_volume() {
     restic backup "$mountpoint" \
         --tag "$service" \
         --tag "volume" \
-        --tag "$volume"
+        --tag "$volume" \
+        --tag plan:volume \
+        --tag created-by:hetzner-cloud
 }
 
 # Backup directory type (main backup target)
@@ -468,7 +474,9 @@ backup_directory_type() {
     restic backup "$directory" \
         --tag "$service" \
         --tag "directory" \
-        --tag "$(basename "$directory")"
+        --tag "$(basename "$directory")" \
+        --tag plan:directory \
+        --tag created-by:hetzner-cloud
 }
 
 # Backup a directory
@@ -488,7 +496,9 @@ backup_directory() {
     restic backup "$full_path" \
         --tag "$service" \
         --tag "directory" \
-        --tag "$(basename "$dir")"
+        --tag "$(basename "$dir")" \
+        --tag plan:directory \
+        --tag created-by:hetzner-cloud
 }
 
 # Apply retention policy (forget only — marks old snapshots for removal).
