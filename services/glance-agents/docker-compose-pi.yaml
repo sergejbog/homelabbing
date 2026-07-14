@@ -1,0 +1,15 @@
+services:
+  glance-agent:
+    container_name: glance-agent
+    image: glanceapp/agent
+    environment:
+      # Optional, leave empty or comment out for no authentication
+      TOKEN: ${GLANCE_REMOTE_TOKEN}
+    volumes:
+      # Add your mount points below in the format host_path:container_path with :ro suffix for read-only
+      - /storage:/storage:ro
+    labels:
+      - "traefik.http.routers.glance-agent.rule=Host(`glance-agent.pi.${DOMAIN_NAME}`)"
+    restart: unless-stopped
+    ports:
+      - "10.49.0.2:27973:27973"

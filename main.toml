@@ -44,6 +44,28 @@ SERVICE_NAME = backrest
 ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/backrest-light.svg
 """
 
+[[stack]]
+name = "glance-agents-pi"
+[stack.config]
+server = "raspberry-pi"
+linked_repo = "homelabbing"
+run_directory = "services/glance-agents"
+file_paths = ["docker-compose-pi.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh glance
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh glance
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = glance
+"""
+
 ##
 
 [[stack]]
