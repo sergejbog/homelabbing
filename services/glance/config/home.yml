@@ -15,6 +15,10 @@
               name: Ex44 Server
               url: http://${SECONDARY_SERVER_IP}:${GLANCE_REMOTE_PORT}
               token: ${GLANCE_REMOTE_TOKEN}
+            - type: remote
+              name: Raspberry Pi
+              url: https://glance-agent.pi.${DOMAIN_NAME}
+              token: ${GLANCE_REMOTE_TOKEN}
         - $include: ./widgets/mail-bookmarks.yml
 
     - size: full
