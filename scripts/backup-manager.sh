@@ -337,9 +337,7 @@ backup_postgres() {
         --tag "$service" \
         --tag "database" \
         --tag "postgres" \
-        --tag "$database" \
-        --tag plan:postgres \
-        --tag created-by:hetzner-cloud
+        --tag "$database"
 
     rm "${dump_file}.gz"
 }
@@ -391,9 +389,7 @@ backup_mariadb() {
         --tag "$service" \
         --tag "database" \
         --tag "mariadb" \
-        --tag "$database" \
-        --tag plan:mariadb \
-        --tag created-by:hetzner-cloud
+        --tag "$database"
 
     rm "${dump_file}.gz"
 }
@@ -449,9 +445,7 @@ backup_single_volume() {
     restic backup "$mountpoint" \
         --tag "$service" \
         --tag "volume" \
-        --tag "$volume" \
-        --tag plan:volume \
-        --tag created-by:hetzner-cloud
+        --tag "$volume"
 }
 
 # Backup directory type (main backup target)
@@ -474,9 +468,7 @@ backup_directory_type() {
     restic backup "$directory" \
         --tag "$service" \
         --tag "directory" \
-        --tag "$(basename "$directory")" \
-        --tag plan:directory \
-        --tag created-by:hetzner-cloud
+        --tag "$(basename "$directory")"
 }
 
 # Backup a directory
@@ -496,9 +488,7 @@ backup_directory() {
     restic backup "$full_path" \
         --tag "$service" \
         --tag "directory" \
-        --tag "$(basename "$dir")" \
-        --tag plan:directory \
-        --tag created-by:hetzner-cloud
+        --tag "$(basename "$dir")"
 }
 
 # Apply retention policy (forget only — marks old snapshots for removal).
@@ -515,14 +505,15 @@ apply_retention() {
     local monthly=$(awk -v p="$priority" '/^  [a-z]/ {current=$1; gsub(/:/, "", current)} current == p && /monthly:/ {print $2}' "$CONFIG_FILE" | grep -E '^[0-9]+$' | head -1)
 
     # Use defaults if not found
-    daily=${daily:-7}
-    weekly=${weekly:-4}
-    monthly=${monthly:-6}
+    daily=${daily:-1}
+    weekly=${weekly:-3}
+    monthly=${monthly:-5}
 
     echo "Applying retention policy (daily:$daily weekly:$weekly monthly:$monthly)..."
 
     restic forget \
         --tag "$service" \
+        --group-by host,tags \
         --keep-daily "$daily" \
         --keep-weekly "$weekly" \
         --keep-monthly "$monthly"
