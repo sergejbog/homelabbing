@@ -44,51 +44,6 @@ SERVICE_NAME = backrest
 ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/backrest-light.svg
 """
 
-[[stack]]
-name = "trek"
-[stack.config]
-server = "Local"
-linked_repo = "homelabbing"
-run_directory = "services/trek"
-file_paths = ["docker-compose.yaml"]
-pre_deploy.path = "../../scripts"
-pre_deploy.command = """
-  # Add multiple commands on new lines. Supports comments.
-  sh ./fetch-secrets-pre-deploy.sh trek
-"""
-post_deploy.path = "../../scripts"
-post_deploy.command = """
-  # Add multiple commands on new lines. Supports comments.
-sh ./cleanup-secrets-post-deploy.sh trek
-"""
-environment = """
-  # VARIABLE = value
-SERVICE_NAME = trek
-ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/trek-light.svg
-"""
-
-[[stack]]
-name = "glance-agents-pi"
-[stack.config]
-server = "raspberry-pi"
-linked_repo = "homelabbing"
-run_directory = "services/glance-agents"
-file_paths = ["docker-compose-pi.yaml"]
-pre_deploy.path = "../../scripts"
-pre_deploy.command = """
-  # Add multiple commands on new lines. Supports comments.
-  sh ./fetch-secrets-pre-deploy.sh glance
-"""
-post_deploy.path = "../../scripts"
-post_deploy.command = """
-  # Add multiple commands on new lines. Supports comments.
-sh ./cleanup-secrets-post-deploy.sh glance
-"""
-environment = """
-  # VARIABLE = value
-SERVICE_NAME = glance
-"""
-
 ##
 
 [[stack]]
@@ -384,6 +339,30 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/selfhst/icons@main/svg/glance.svg
 ##
 
 [[stack]]
+name = "glance-agents-pi"
+[stack.config]
+server = "raspberry-pi"
+linked_repo = "homelabbing"
+run_directory = "services/glance-agents"
+file_paths = ["docker-compose-pi.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh glance
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh glance
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = glance
+"""
+
+##
+
+[[stack]]
 name = "grafana-stack"
 [stack.config]
 server = "ex44"
@@ -529,6 +508,31 @@ REVIEW_PASS="serbog2001"
 FLARESOLVERR_URL="http://flaresolverr:8191"
 CLASSIFY_PROVIDER=ollama
 OLLAMA_URL=http://10.49.0.4:11434
+"""
+
+##
+
+[[stack]]
+name = "job-ops"
+[stack.config]
+server = "ex44"
+run_build = true
+linked_repo = "homelabbing"
+run_directory = "services/job-ops"
+file_paths = ["docker-compose.yml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./fetch-secrets-pre-deploy.sh job-ops
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh job-ops
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME =
 """
 
 ##
@@ -889,6 +893,31 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/traefik.sv
 ##
 
 [[stack]]
+name = "trek"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/trek"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh trek
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh trek
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = trek
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/trek-light.svg
+"""
+
+##
+
+[[stack]]
 name = "uptime-kuma"
 [stack.config]
 server = "Local"
@@ -978,6 +1007,10 @@ server = "Local"
 builder = "Local"
 git_account = "sergejbog"
 repo = "sergejbog/homelabbing"
+on_pull.command = """
+  # Add multiple commands on new lines. Supports comments.
+git submodule update --init --recursive
+"""
 
 ##
 
