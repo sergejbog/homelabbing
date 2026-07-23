@@ -1010,6 +1010,7 @@ repo = "sergejbog/homelabbing"
 on_pull.command = """
   # Add multiple commands on new lines. Supports comments.
 git submodule update --init --recursive
+git submodule update --remote
 """
 
 ##
