@@ -36,6 +36,10 @@
       widgets:
         - type: clock
           hour-format: 24h
+        - type: weather
+          units: metric
+          hour-format: 24h
+          location: Skopje, North Macedonia
         - type: markets
           hide-header: true
           markets:
