@@ -31,15 +31,13 @@
             - $include: ./widgets/monitor.yml
 
             - $include: ./widgets/komodo.yml
+        - $include: ./widgets/word-of-the-day.yml
 
     - size: small
       widgets:
         - type: clock
           hour-format: 24h
-        - type: weather
-          units: metric
-          hour-format: 24h
-          location: Skopje, North Macedonia
+        - $include: ./widgets/weather.yml
         - type: markets
           hide-header: true
           markets:

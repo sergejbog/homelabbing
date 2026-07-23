@@ -1,0 +1,53 @@
+- type: custom-api
+  title: Word of the Day
+  title-url: https://www.merriam-webster.com/word-of-the-day
+  # Merriam-Webster only publishes this as RSS and Glance's custom-api can
+  # only parse JSON, so rss2json does the conversion (keyless, no signup).
+  # The feed packs everything into one HTML blob per item, so the pieces are
+  # pulled back out with regexes below rather than rendered as a raw article.
+  url: https://api.rss2json.com/v1/api.json?rss_url=https%3A%2F%2Fwww.merriam-webster.com%2Fwotd%2Ffeed%2Frss2
+  cache: 2h
+  template: |
+    {{ if ne (.JSON.String "status") "ok" }}
+      <p class="color-negative">Couldn't reach the word of the day feed.</p>
+    {{ else }}
+      {{ $word := .JSON.String "items.0.title" }}
+      {{ $link := .JSON.String "items.0.link" }}
+      {{ $desc := .JSON.String "items.0.description" }}
+
+      {{/* \MAV-rik\ -> MAV-rik */}}
+      {{ $pron := findSubmatch "\\\\([^\\\\]+)\\\\" $desc }}
+      {{/* the first <em> is the part of speech, before the definition body */}}
+      {{ $pos := findSubmatch "<em>([a-z][a-z ]*)</em>" $desc }}
+      {{ $def := findSubmatch "(?s)<br\\s*/?></p>\\s*<p>(.*?)</p>" $desc | replaceMatches "<[^>]*>" "" | trimSpace }}
+      {{ $example := findSubmatch "(?s)<p>// (.*?)</p>" $desc | replaceMatches "<[^>]*>" "" | trimSpace }}
+      {{ $origin := findSubmatch "(?s)Did you know\\?</strong><br\\s*/?></p>\\s*<p>(.*?)</p>" $desc | replaceMatches "<[^>]*>" "" | trimSpace }}
+
+      <a href="{{ $link }}" target="_blank" rel="noreferrer"
+         class="size-h2 color-highlight block">{{ $word }}</a>
+
+      {{ if or $pron $pos }}
+        <div class="size-h5 color-subdue margin-top-3">
+          {{ if $pron }}{{ $pron }}{{ end }}
+          {{ if and $pron $pos }} &middot; {{ end }}
+          {{ if $pos }}<em>{{ $pos }}</em>{{ end }}
+        </div>
+      {{ end }}
+
+      {{ if $def }}
+        <p class="color-paragraph margin-top-10">{{ $def }}</p>
+      {{ else }}
+        <p class="color-subdue margin-top-10">No definition in today's entry.</p>
+      {{ end }}
+
+      {{ if $example }}
+        <p class="size-h5 color-subdue margin-top-10"><em>&ldquo;{{ $example }}&rdquo;</em></p>
+      {{ end }}
+
+      {{ if $origin }}
+        <details class="details margin-top-10">
+          <summary class="summary size-h5 color-primary">Where it comes from</summary>
+          <p class="size-h5 color-paragraph">{{ $origin }}</p>
+        </details>
+      {{ end }}
+    {{ end }}
