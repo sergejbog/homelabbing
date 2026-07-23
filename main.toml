@@ -45,6 +45,29 @@ ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/backrest-l
 """
 
 [[stack]]
+name = "trek"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/trek"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+  sh ./fetch-secrets-pre-deploy.sh trek
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  # Add multiple commands on new lines. Supports comments.
+sh ./cleanup-secrets-post-deploy.sh trek
+"""
+environment = """
+  # VARIABLE = value
+SERVICE_NAME = trek
+ICON_LINK=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/trek-light.svg
+"""
+
+[[stack]]
 name = "glance-agents-pi"
 [stack.config]
 server = "raspberry-pi"

@@ -1,0 +1,50 @@
+services:
+  app:
+    image: mauriceboe/trek:latest
+    container_name: trek
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trek.entrypoints=https"
+      - "traefik.http.routers.trek.rule=Host(`trek.${DOMAIN_NAME}`)"
+      - "traefik.http.routers.trek.middlewares=AddForwardedHeader@file"
+      - "traefik.http.routers.trek.tls=true"
+      - "traefik.http.routers.trek.tls.certresolver=myresolver"
+      - "traefik.http.routers.trek.service=trek"
+      - "traefik.http.services.degoog.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+    networks:
+      proxy:
+    env_file:
+      - .env
+    volumes:
+      - data:/app/data
+      - uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+
+volumes:
+  data:
+    driver: local
+  uploads:
+    driver: local
+
+networks:
+  proxy:
+    external: true
