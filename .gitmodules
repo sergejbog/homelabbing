@@ -1,0 +1,3 @@
+[submodule "services/job-ops"]
+	path = services/job-ops
+	url = https://github.com/sergejbog/job-ops.git
