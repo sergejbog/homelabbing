@@ -105,3 +105,9 @@ overrides:
     ] # The types of metrics generation to enable for each tenant.
   max_bytes_per_trace: 50_000_000
   max_traces_per_user: 50000
+
+query_frontend:
+  search:
+    max_duration: 168h # Adjust this to your needs
+  metrics:
+    max_duration: 24h  # Adjust this to your needs
