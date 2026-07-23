@@ -26,10 +26,7 @@ ingester:
 # The compactor block configures the compactor responsible for compacting TSDB blocks.
 compactor:
   compaction:
-    compaction_window: 1h # Blocks in this time window will be compacted together.
-    max_block_bytes: 100_000_000 # Maximum size of a compacted block.
-    block_retention: 1h # How long to keep blocks. Default is 14 days, this demo system is short-lived.
-    compacted_block_retention: 10m # How long to keep compacted blocks stored elsewhere.
+    block_retention: 1080h
 
 # Configuration block to determine where to store TSDB blocks.
 storage:
@@ -106,8 +103,3 @@ overrides:
   max_bytes_per_trace: 50_000_000
   max_traces_per_user: 50000
 
-query_frontend:
-  search:
-    max_duration: 168h # Adjust this to your needs
-  metrics:
-    max_duration: 24h  # Adjust this to your needs
