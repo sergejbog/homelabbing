@@ -36,7 +36,6 @@
 
             - $include: ./widgets/komodo.yml
         - $include: ./widgets/cineplexx.yml
-        - $include: ./widgets/word-of-the-day.yml
 
     - size: small
       widgets:
@@ -57,4 +56,4 @@
             - symbol: JUP29210-USD
               name: Jupiter
               chart-link: https://www.tradingview.com/chart/?symbol=BINANCE:JUPUSDT
-        - $include: ./widgets/external-bookmarks.yml
+        - $include: ./widgets/word-of-the-day.yml
