@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Post-deploy script: Clean up .env file after deployment
-# Usage: ./cleanup-secrets-post-deploy.sh [service-name]
+# Usage: ./cleanup-secrets-post-deploy.sh [service-name] [target-dir]
+#   target-dir: the folder fetch-secrets-pre-deploy.sh wrote .env into, if not the default.
 
 SERVICE_NAME="${1:-komodo}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SERVICE_PATH="${SCRIPT_DIR}/../services/${SERVICE_NAME}"
+SERVICE_PATH="${2:-${SCRIPT_DIR}/../services/${SERVICE_NAME}}"
 ENV_FILE="${SERVICE_PATH}/.env"
 
 echo "🧹 Cleaning up secrets for ${SERVICE_NAME}..."

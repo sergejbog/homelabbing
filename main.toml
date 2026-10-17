@@ -30,14 +30,15 @@ run_build = true
 linked_repo = "axiom-data"
 run_directory = "."
 file_paths = ["docker-compose.yml"]
-environment = """
-DOMAIN_NAME=sniperoo.app
-API_KEY=KWjh9djPL57XduK6JDBW9mZKHugvw9DI
-ENABLE_VNC=1
-VNC_PASSWORD=fH_NFlSr
-VNC_BASIC_AUTH="admin:{SHA}UKAaaDXNu1OyMZhezrau+eMVmsA="
-ENABLE_VNC=1
-PROXY_SERVER=http://admin:SlS64JAsz--D*c@10.49.0.2:3128
+pre_deploy.command = """
+  # Secrets come from Infisical (/axiom-data); keep this stack's environment empty.
+  # The code lives in another repo, so call homelabbing's script by path and write .env here.
+  # Only deploys of ex44's homelabbing stacks update that copy, so refresh it first.
+  git -C /etc/komodo/repos/homelabbing pull -q --ff-only || true
+  sh /etc/komodo/repos/homelabbing/scripts/fetch-secrets-pre-deploy.sh axiom-data "$PWD"
+"""
+post_deploy.command = """
+  sh /etc/komodo/repos/homelabbing/scripts/cleanup-secrets-post-deploy.sh axiom-data "$PWD"
 """
 
 ##

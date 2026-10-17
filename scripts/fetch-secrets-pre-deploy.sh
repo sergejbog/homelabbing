@@ -1,14 +1,16 @@
 #!/bin/bash
 
 # Pre-deploy script: Fetch secrets from Infisical and create .env file
-# Usage: ./fetch-secrets-pre-deploy.sh [service-name]
+# Usage: ./fetch-secrets-pre-deploy.sh [service-name] [target-dir]
+#   target-dir: where to write .env (default: services/<service-name> in this repo).
+#   For stacks whose compose file lives in another repo, e.g. axiom-data.
 
 set -e
 
 SERVICE_NAME="${1:-komodo}"
 ENVIRONMENT="prod"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SERVICE_PATH="${SCRIPT_DIR}/../services/${SERVICE_NAME}"
+SERVICE_PATH="${2:-${SCRIPT_DIR}/../services/${SERVICE_NAME}}"
 ENV_FILE="${SERVICE_PATH}/.env"
 
 echo "🔐 Fetching secrets from Infisical for ${SERVICE_NAME}..."
