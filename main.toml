@@ -22,6 +22,23 @@ enabled = true
 ##
 
 [[stack]]
+name = "axiom-data"
+[stack.config]
+server = "ex44"
+auto_pull = false
+run_build = true
+linked_repo = "axiom-data"
+run_directory = "."
+file_paths = ["docker-compose.yml"]
+environment = """
+API_KEY=KWjh9djPL57XduK6JDBW9mZKHugvw9DI
+ENABLE_VNC=1
+VNC_PASSWORD=fH_NFlSr
+"""
+
+##
+
+[[stack]]
 name = "backrest"
 [stack.config]
 server = "Local"
@@ -508,23 +525,6 @@ REVIEW_PASS="serbog2001"
 FLARESOLVERR_URL="http://flaresolverr:8191"
 CLASSIFY_PROVIDER=ollama
 OLLAMA_URL=http://10.49.0.4:11434
-"""
-
-##
-
-[[stack]]
-name = "axiom-data"
-[stack.config]
-server = "ex44"
-auto_pull = false
-run_build = true
-linked_repo = "axiom-data"
-run_directory = "."
-file_paths = ["docker-compose.yml"]
-environment = """
-API_KEY="KWjh9djPL57XduK6JDBW9mZKHugvw9DI
-ENABLE_VNC=1
-VNC_PASSWORD=fH_NFlSr
 """
 
 ##
