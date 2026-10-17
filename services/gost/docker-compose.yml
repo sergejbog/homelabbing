@@ -1,0 +1,7 @@
+services:
+  gost:
+    image: gogost/gost:3.3.0   # arm64 and arm/v7 builds
+    container_name: axiom-proxy
+    restart: unless-stopped
+    network_mode: host         # listen on the Pi's WireGuard address itself
+    command: ["-L", "http://${PROXY_USER:?}:${PROXY_PASS:?}@${WG_IP:?}:3128"]
