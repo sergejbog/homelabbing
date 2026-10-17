@@ -1,0 +1,223 @@
+# Cineplexx Skopje showtimes + upcoming releases.
+#
+# The site is a React SPA, but the API behind it (app.cineplexx.mk) is open —
+# no auth, no key, no custom headers required. Endpoints used:
+#   /api/v2/movies/filters/dates/list?location=all  -> dates that have screenings
+#   /api/v1/cinemas/{id}/movies?date=YYYY-MM-DD     -> movies + sessions for a date
+#   /api/v2/movies/coming-soon?location=all         -> upcoming, with openingDate
+# Showtimes that have already started are dropped server-side, so "Today" needs
+# no client-side filtering.
+#
+# Cineplexx Skopje (Skopje City Mall) is cinema 1141 - the only Cineplexx in MK.
+#
+# Note: Glance's math helpers (add/sub/div) return NaN on int64, so day counts
+# go through time.Duration.Hours() rather than Unix timestamps.
+
+- type: group
+  widgets:
+    - type: custom-api
+      title: Now Showing
+      title-url: https://www.cineplexx.mk/
+      cache: 1d
+      options:
+        cinema-id: "1141"
+        days: 7
+      template: |
+        {{ $cinema := .Options.StringOr "cinema-id" "1141" }}
+        {{ $maxDays := .Options.IntOr "days" 7 }}
+
+        {{ $datesResp := newRequest "https://app.cineplexx.mk/api/v2/movies/filters/dates/list?location=all" | getResponse }}
+        {{ $dates := $datesResp.JSON.Array "" }}
+
+        {{ if not $dates }}
+          <p class="color-negative">Couldn't reach the Cineplexx schedule.</p>
+        {{ else }}
+        {{/* The host runs UTC while the cinema is UTC+2, so "today" is resolved in the
+             cinema's own offset (carried on every date the API returns) rather than the
+             container's — otherwise the label lands on the wrong tab late at night. */}}
+        {{ $cinemaTZ := ((index $dates 0).String "" | parseTime "RFC3339").Location }}
+        {{ $today := (now.In $cinemaTZ).Format "2006-01-02" }}
+        <style>
+          .cpx > input { position: absolute; opacity: 0; pointer-events: none; }
+          .cpx-tabs { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .6rem; scrollbar-width: none; }
+          .cpx-tabs::-webkit-scrollbar { display: none; }
+          .cpx-tabs label {
+            flex: 0 0 auto; cursor: pointer; text-align: center; line-height: 1.2;
+            padding: .35rem .6rem; border-radius: .5rem; white-space: nowrap;
+            border: 1px solid var(--color-separator); color: var(--color-text-subdue);
+          }
+          .cpx-tabs label:hover { color: var(--color-text-highlight); }
+          .cpx-tabs label b { display: block; font-weight: 600; }
+          .cpx-tabs label span { display: block; font-size: .8em; opacity: .7; }
+          .cpx-panel { display: none; }
+          .cpx-movie { display: flex; gap: .7rem; padding: .7rem 0; border-top: 1px solid var(--color-separator); }
+          .cpx-panel > .cpx-movie:first-child { border-top: 0; }
+          .cpx-poster { flex: 0 0 auto; width: 46px; height: 66px; object-fit: cover; border-radius: .3rem; background: var(--color-separator); }
+          .cpx-info { min-width: 0; flex: 1; }
+          .cpx-times { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
+          .cpx-time {
+            display: inline-flex; align-items: baseline; gap: .25rem; white-space: nowrap;
+            padding: .1rem .4rem; border-radius: .3rem; text-decoration: none;
+            border: 1px solid var(--color-separator); color: var(--color-text-highlight);
+          }
+          a.cpx-time:hover { border-color: var(--color-primary); color: var(--color-primary); }
+          /* red = box office only, grey = not on sale yet; both are unbookable online */
+          .cpx-time-off { opacity: .45; }
+          .cpx-time i { font-style: normal; font-size: .75em; color: var(--color-primary); }
+          /* hall number only — the full screen name ("Сала 6 Витаминка") stays on hover */
+          .cpx-time u { text-decoration: none; font-size: .75em; color: var(--color-text-subdue); }
+          .cpx-badge { border: 1px solid var(--color-separator); border-radius: .25rem; padding: 0 .25rem; }
+          {{ range $i, $dv := $dates }}{{ if lt $i $maxDays }}
+          #cpx-d{{ $i }}:checked ~ .cpx-panels > .cpx-p{{ $i }} { display: block; }
+          {{/* attribute selector is left unquoted on purpose: a quoted string inside
+               <style> puts html/template into an ambiguous URL context and errors */}}
+          #cpx-d{{ $i }}:checked ~ .cpx-tabs label[for=cpx-d{{ $i }}] { border-color: var(--color-primary); color: var(--color-primary); }
+          {{ end }}{{ end }}
+        </style>
+
+        <div class="cpx">
+          {{ range $i, $dv := $dates }}{{ if lt $i $maxDays }}
+            <input type="radio" name="cpx-day" id="cpx-d{{ $i }}"{{ if eq $i 0 }} checked{{ end }}>
+          {{ end }}{{ end }}
+
+          <div class="cpx-tabs">
+            {{ range $i, $dv := $dates }}{{ if lt $i $maxDays }}
+              {{ $d := $dv.String "" | parseTime "RFC3339" }}
+              <label for="cpx-d{{ $i }}">
+                <b>{{ if eq ($d.Format "2006-01-02") $today }}Today{{ else }}{{ $d.Format "Mon" }}{{ end }}</b>
+                <span>{{ $d.Format "2 Jan" }}</span>
+              </label>
+            {{ end }}{{ end }}
+          </div>
+
+          <div class="cpx-panels">
+            {{ range $i, $dv := $dates }}{{ if lt $i $maxDays }}
+              {{ $d := $dv.String "" | parseTime "RFC3339" }}
+              {{ $dateStr := $d.Format "2006-01-02" }}
+              {{ $resp := newRequest (printf "https://app.cineplexx.mk/api/v1/cinemas/%s/movies?date=%s" $cinema $dateStr) | getResponse }}
+              {{ $movies := sortByTime "sessions.0.showtime" "RFC3339" "asc" ($resp.JSON.Array "") }}
+              <div class="cpx-panel cpx-p{{ $i }}">
+                {{ if not $movies }}
+                  <p class="color-subdue">No screenings left for this day.</p>
+                {{ end }}
+                {{ range $m := $movies }}
+                  {{/* A past-midnight premiere (e.g. 00:01) is returned under both the
+                       previous day and its own. Sessions are ascending, so if the first
+                       one already falls on the next day the whole movie belongs there. */}}
+                  {{ $firstDay := ($m.String "sessions.0.showtime" | parseTime "RFC3339").Format "2006-01-02" }}
+                  {{ if eq $firstDay $dateStr }}
+                  {{ $orig := $m.String "titleOriginalCalculated" }}
+                  {{/* findSubmatch returns the capture group, so the pattern needs one */}}
+                  {{ $age := findSubmatch "(\\+[0-9]+)" ($m.String "rating") }}
+                  <div class="cpx-movie">
+                    <img class="cpx-poster" loading="lazy" src="{{ $m.String "posterImage" }}" alt="">
+                    <div class="cpx-info">
+                      <a href="https://www.cineplexx.mk/film/{{ $m.String "shortURL" }}" target="_blank" rel="noreferrer"
+                         class="size-h4 color-highlight block text-truncate">{{ $m.String "title" }}</a>
+                      {{ if and $orig (ne $orig ($m.String "title")) }}
+                        <div class="size-h6 color-subdue text-truncate">{{ $orig }}</div>
+                      {{ end }}
+                      <div class="size-h6 color-subdue">
+                        {{ $m.Int "runTime" }}m
+                        {{ range $gi, $g := $m.Array "genres" }}{{ if lt $gi 2 }} &middot; {{ $g.String "" | trimSpace }}{{ end }}{{ end }}
+                        {{ if $age }} <span class="cpx-badge">{{ $age }}</span>{{ end }}
+                      </div>
+                      <div class="cpx-times">
+                        {{ range $s := $m.Array "sessions" }}
+                          {{ $st := $s.String "showtime" | parseTime "RFC3339" }}
+                          {{ $tech := $s.String "technologies.0.0" }}
+                          {{ $status := $s.String "status" }}
+                          {{/* Screen names are "Сала 6 <sponsor>" — far too long to show in a
+                               chip, and the sponsor carries no information, so only the hall
+                               number is rendered; the full name remains in the tooltip. */}}
+                          {{ $screen := $s.String "screenName" }}
+                          {{ $hall := findSubmatch "([0-9]+)" $screen }}
+                          {{/* The session's own id is already "{cinemaId}-{sessionId}", which
+                               is exactly the :movieCinemaId the booking wizard expects. */}}
+                          {{ $book := printf "https://www.cineplexx.mk/purchase/wizard/%s" ($s.String "id") }}
+                          {{ if eq $status "red" }}
+                            <span class="cpx-time cpx-time-off" title="{{ $screen }} &middot; box office only">{{ $st.Format "15:04" }}{{ if and $tech (ne $tech "2D") }}<i>{{ $tech }}</i>{{ end }}{{ if $hall }}<u>&middot;{{ $hall }}</u>{{ end }}</span>
+                          {{ else if eq $status "grey" }}
+                            <span class="cpx-time cpx-time-off" title="{{ $screen }} &middot; not on sale yet">{{ $st.Format "15:04" }}{{ if and $tech (ne $tech "2D") }}<i>{{ $tech }}</i>{{ end }}{{ if $hall }}<u>&middot;{{ $hall }}</u>{{ end }}</span>
+                          {{ else }}
+                            <a class="cpx-time" href="{{ $book }}" target="_blank" rel="noreferrer" title="{{ $screen }} &middot; book online">{{ $st.Format "15:04" }}{{ if and $tech (ne $tech "2D") }}<i>{{ $tech }}</i>{{ end }}{{ if $hall }}<u>&middot;{{ $hall }}</u>{{ end }}</a>
+                          {{ end }}
+                        {{ end }}
+                      </div>
+                    </div>
+                  </div>
+                  {{ end }}
+                {{ end }}
+              </div>
+            {{ end }}{{ end }}
+          </div>
+        </div>
+        {{ end }}
+
+    - type: custom-api
+      title: Coming Soon
+      title-url: https://www.cineplexx.mk/
+      cache: 6h
+      url: https://app.cineplexx.mk/api/v2/movies/coming-soon?location=all
+      options:
+        show: 8
+      template: |
+        {{ $show := .Options.IntOr "show" 8 }}
+        {{ $movies := sortByTime "openingDate" "RFC3339" "asc" (.JSON.Array "") }}
+
+        {{ if not $movies }}
+          <p class="color-negative">Couldn't reach the Cineplexx release list.</p>
+        {{ else }}
+        {{/* Count days in the cinema's own offset, not the container's (see Now Showing). */}}
+        {{ $cinemaTZ := ((index $movies 0).String "openingDate" | parseTime "RFC3339").Location }}
+        {{ $nowDay := (now.In $cinemaTZ).Format "2006-01-02" | parseTime "DateOnly" }}
+        <style>
+          .cpxu > input { position: absolute; opacity: 0; pointer-events: none; }
+          .cpxu-movie { display: flex; gap: .7rem; padding: .7rem 0; border-top: 1px solid var(--color-separator); }
+          .cpxu-list > .cpxu-movie:first-child { border-top: 0; }
+          .cpxu-list > .cpxu-movie:nth-child(n+{{ add $show 1 }}) { display: none; }
+          #cpxu-all:checked ~ .cpxu-list > .cpxu-movie { display: flex; }
+          .cpxu-poster { flex: 0 0 auto; width: 46px; height: 66px; object-fit: cover; border-radius: .3rem; background: var(--color-separator); }
+          .cpxu-info { min-width: 0; flex: 1; }
+          .cpxu-toggle { display: inline-block; cursor: pointer; margin-top: .7rem; }
+          .cpxu-less { display: none; }
+          #cpxu-all:checked ~ .cpxu-toggle .cpxu-more { display: none; }
+          #cpxu-all:checked ~ .cpxu-toggle .cpxu-less { display: inline; }
+        </style>
+
+        <div class="cpxu">
+          <input type="checkbox" id="cpxu-all">
+          <div class="cpxu-list">
+            {{ range $m := $movies }}
+              {{ $orig := $m.String "titleOriginalCalculated" }}
+              {{ $od := $m.String "openingDate" | parseTime "RFC3339" }}
+              {{ $odDay := $od.Format "2006-01-02" | parseTime "DateOnly" }}
+              {{ $in := div ($odDay.Sub $nowDay).Hours 24 | toInt }}
+              <div class="cpxu-movie">
+                <img class="cpxu-poster" loading="lazy" src="{{ $m.String "posterImage" }}" alt="">
+                <div class="cpxu-info">
+                  <a href="https://www.cineplexx.mk/film/{{ $m.String "shortURL" }}" target="_blank" rel="noreferrer"
+                     class="size-h4 color-highlight block text-truncate">{{ $m.String "title" }}</a>
+                  {{ if and $orig (ne $orig ($m.String "title")) }}
+                    <div class="size-h6 color-subdue text-truncate">{{ $orig }}</div>
+                  {{ end }}
+                  <div class="size-h6">
+                    <span class="color-primary">{{ $od.Format "Mon 2 Jan" }}</span>
+                    <span class="color-subdue">&middot; {{ if le $in 0 }}out now{{ else if eq $in 1 }}tomorrow{{ else }}in {{ $in }} days{{ end }}</span>
+                  </div>
+                  <div class="size-h6 color-subdue">
+                    {{ $m.Int "runTime" }}m
+                    {{ range $gi, $g := $m.Array "genres" }}{{ if lt $gi 2 }} &middot; {{ $g.String "" | trimSpace }}{{ end }}{{ end }}
+                  </div>
+                </div>
+              </div>
+            {{ end }}
+          </div>
+          {{ if gt (len $movies) $show }}
+            <label for="cpxu-all" class="cpxu-toggle size-h5 color-primary">
+              <span class="cpxu-more">Show all {{ len $movies }}</span>
+              <span class="cpxu-less">Show fewer</span>
+            </label>
+          {{ end }}
+        </div>
+        {{ end }}

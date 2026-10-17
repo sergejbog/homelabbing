@@ -1008,6 +1008,15 @@ environment = """
 ##
 
 [[repo]]
+name = "axiom-data"
+[repo.config]
+server = "ex44"
+git_account = "sergejbog"
+repo = "sergejbog/axiom-data"
+
+##
+
+[[repo]]
 name = "crypto-investor-help"
 [repo.config]
 server = "Local"
