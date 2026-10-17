@@ -22,6 +22,28 @@ enabled = true
 ##
 
 [[stack]]
+name = "axiom-canary"
+[stack.config]
+server = "Local"
+linked_repo = "homelabbing"
+run_directory = "services/axiom-canary"
+file_paths = ["docker-compose.yaml"]
+config_files = [
+  { path = "canary.js", services = ["axiom-canary"] }
+]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = """
+  # Secrets come from Infisical (/axiom-canary): AXIOM_API_KEY, NTFY_TOKEN. Keep this stack's environment empty.
+  sh ./fetch-secrets-pre-deploy.sh axiom-canary
+"""
+post_deploy.path = "../../scripts"
+post_deploy.command = """
+  sh ./cleanup-secrets-post-deploy.sh axiom-canary
+"""
+
+##
+
+[[stack]]
 name = "axiom-data"
 [stack.config]
 server = "ex44"

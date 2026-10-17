@@ -1,0 +1,35 @@
+# Watches the axiom stream server (stack axiom-data on ex44) from Local and alerts on ntfy
+# (topic axiom). canary.js has the details. Secrets come from Infisical /axiom-canary:
+#   AXIOM_API_KEY  the API_KEY of /axiom-data
+#   NTFY_TOKEN     an ntfy access token allowed to publish to the topic
+services:
+  axiom-canary:
+    image: 'node:22-alpine'
+    container_name: axiom-canary
+    restart: unless-stopped
+    init: true
+    user: node
+    command: ['node', '/app/canary.js']
+    environment:
+      AXIOM_URL: 'https://axiom.${DOMAIN_NAME:?DOMAIN_NAME comes from Infisical /}'
+      NTFY_URL: 'https://notifications.${DOMAIN_NAME:?DOMAIN_NAME comes from Infisical /}'
+      NTFY_TOPIC: axiom
+      AXIOM_API_KEY: '${AXIOM_API_KEY:?set AXIOM_API_KEY in Infisical /axiom-canary}'
+      NTFY_TOKEN: '${NTFY_TOKEN:?set NTFY_TOKEN in Infisical /axiom-canary}'
+      TZ: Europe/Skopje
+    volumes:
+      - './canary.js:/app/canary.js:ro'
+      # state.json (the open alert, failure streaks) survives redeploys. The image's
+      # /home/node belongs to the node user, so the fresh volume does too.
+      - 'canary-state:/home/node'
+    networks:
+      proxy:
+
+
+volumes:
+  canary-state:
+
+
+networks:
+  proxy:
+    external: true
