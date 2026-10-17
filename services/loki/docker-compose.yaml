@@ -6,15 +6,19 @@ services:
   loki:
     container_name: loki
     user: "0:0"
+    # Grafana and the OTEL collector (stack grafana-stack, same host) reach Loki as loki:3100 on the
+    # proxy network. The host ports stay on 127.0.0.1: Loki has no auth, and Docker-published ports
+    # bypass ufw, so 0.0.0.0 would expose every log line to the internet.
     networks:
       - loki-network
+      - proxy
     image: grafana/loki:latest
     env_file:
       - .env
     command: [ "-config.file=/etc/loki/loki.yaml", "--target=all", "-config.expand-env=true" ]
     ports:
-      - "3100:3100"
-      - "9096:9096"
+      - "127.0.0.1:3100:3100"
+      - "127.0.0.1:9096:9096"
     volumes:
       - "./loki/loki.yaml:/etc/loki/loki.yaml"
       - "loki:/loki"
@@ -50,3 +54,5 @@ services:
 networks:
   loki-network:
     driver: bridge
+  proxy:
+    external: true

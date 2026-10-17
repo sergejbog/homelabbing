@@ -12,11 +12,15 @@ services:
       - proxy
     env_file: .env
     image: otel/opentelemetry-collector-contrib:latest
+    environment:
+      # Loki runs on this host (stack loki) and only publishes on 127.0.0.1; reach it on the proxy network.
+      - LOKI_HOST=loki
+    # OTLP (4317/4318) stays public: the ECS services send to it, with basic auth. The rest is local only.
     ports:
-      - "12347:12345"
-      - "12348:12348"
-      - "6832:6832"
-      - "55679:55679"
+      - "127.0.0.1:12347:12345"
+      - "127.0.0.1:12348:12348"
+      - "127.0.0.1:6832:6832"
+      - "127.0.0.1:55679:55679"
       - "4317:4317"
       - "4318:4318"
     volumes:
@@ -33,6 +37,7 @@ services:
       - "./grafana/provisioning:/etc/grafana/provisioning"
       - 'main-data:/var/lib/grafana'
     environment:
+      - LOKI_HOST=loki
       - GF_FEATURE_TOGGLES_ENABLE=flameGraph traceqlSearch traceQLStreaming correlations metricsSummary traceqlEditor traceToMetrics traceToProfiles datatrails logsContextDatasourceUi
       - GF_INSTALL_PLUGINS=grafana-lokiexplore-app,grafana-exploretraces-app,grafana-pyroscope-app
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
@@ -58,11 +63,11 @@ services:
     networks:
       - proxy
     ports:
-      - "3200:3200"
-      - "9411:9411"
-      - "55680:55680"
-      - "55681:55681"
-      - "14250:14250"
+      - "127.0.0.1:3200:3200"
+      - "127.0.0.1:9411:9411"
+      - "127.0.0.1:55680:55680"
+      - "127.0.0.1:55681:55681"
+      - "127.0.0.1:14250:14250"
     command: [ "-config.file=/etc/tempo.yaml" ]
     volumes:
       - "./tempo/tempo.yaml:/etc/tempo.yaml"
@@ -75,7 +80,7 @@ services:
     networks:
       - proxy
     ports:
-      - "9009:9009"
+      - "127.0.0.1:9009:9009"
     volumes:
       - "./mimir/mimir.yaml:/etc/mimir.yaml"
       - mimir:/mimir
