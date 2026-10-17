@@ -31,9 +31,12 @@ linked_repo = "axiom-data"
 run_directory = "."
 file_paths = ["docker-compose.yml"]
 environment = """
+DOMAIN_NAME=sniperoo.app
 API_KEY=KWjh9djPL57XduK6JDBW9mZKHugvw9DI
 ENABLE_VNC=1
 VNC_PASSWORD=fH_NFlSr
+VNC_BASIC_AUTH="admin:{SHA}UKAaaDXNu1OyMZhezrau+eMVmsA="
+ENABLE_VNC=1
 """
 
 ##
