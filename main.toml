@@ -388,7 +388,7 @@ name = "gost-proxy"
 [stack.config]
 server = "raspberry-pi"
 linked_repo = "homelabbing"
-run_directory = "services/gost"
+run_directory = "services/gost-proxy"
 file_paths = ["docker-compose.yml"]
 pre_deploy.path = "../../scripts"
 pre_deploy.command = """
