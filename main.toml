@@ -33,7 +33,7 @@ config_files = [
 ]
 pre_deploy.path = "../../scripts"
 pre_deploy.command = """
-  # Secrets come from Infisical (/axiom-canary): AXIOM_API_KEY, NTFY_TOKEN. Keep this stack's environment empty.
+  # Secrets come from Infisical (/axiom-canary): AXIOM_API_KEY, NTFY_TOKEN, AUTOFIX_WEBHOOK_SECRET. Keep this stack's environment empty.
   sh ./fetch-secrets-pre-deploy.sh axiom-canary
 """
 post_deploy.path = "../../scripts"

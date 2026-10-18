@@ -11,7 +11,10 @@ const KEY = 'fake-axiom-key-for-tests';
 const NTFY = 'fake-ntfy-token-for-tests';
 const TOKEN = 'CY27QvCQBCmLBuz3V7c8snEeD4z67iyoSTkwo35Ypump';
 
-function setup() {
+const ROUTER = 'https://router.test/webhook/autofix-signal';
+const ROUTER_SECRET = 'fake-router-secret-for-tests';
+
+function setup(extraEnv = {}) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'canary-'));
     const w = {
         clock: Date.parse('2026-10-17T20:00:00Z'),
@@ -19,6 +22,8 @@ function setup() {
         status: null,
         selfcheckError: null,
         ntfyStatus: 200,
+        routerStatus: 200,
+        signals: [],
         sent: [],
         requests: [],
         sockets: [],
@@ -38,6 +43,11 @@ function setup() {
         if (url === 'https://ntfy.test') {
             w.sent.push({ ...JSON.parse(init.body), auth: init.headers.authorization });
             return { status: w.ntfyStatus, ok: w.ntfyStatus === 200, text: async () => (w.ntfyStatus === 200 ? '{}' : 'unauthorized') };
+        }
+        if (url === ROUTER) {
+            w.signals.push({ ...JSON.parse(init.body), secret: init.headers['x-autofix-secret'] });
+            if (w.routerStatus === 'down') throw new TypeError('fetch failed');
+            return { status: w.routerStatus, ok: w.routerStatus === 200, text: async () => '{}' };
         }
         throw new Error(`unexpected fetch ${url}`);
     };
@@ -80,6 +90,7 @@ function setup() {
             NTFY_TOKEN: NTFY,
             STREAM_TIMEOUT_MS: '100',
             STATE_FILE: path.join(dir, 'state.json'),
+            ...extraEnv,
         },
         fetch: w.fetch,
         WebSocket: w.WebSocket,
@@ -259,6 +270,44 @@ test('a failed ntfy send keeps the state, so the next run sends it again', async
     w.ntfyStatus = 200;
     await w.run();
     assert.strictEqual(w.sent.filter((m) => m.title === 'axiom broken: login').length, 2, 'the failed one, then the retry');
+});
+
+test('autofix router: the same events as firing/resolved, with the secret in a header; a router outage changes nothing', async () => {
+    const w = setup({ AUTOFIX_WEBHOOK_URL: ROUTER, AUTOFIX_WEBHOOK_SECRET: ROUTER_SECRET });
+    const one = () => w.broken([{ name: 'stream:viewers', status: 'broken', detail: 'no frames' }]);
+    const two = () => w.broken([{ name: 'stream:viewers', status: 'broken', detail: 'no frames' }, { name: 'login', status: 'broken', detail: 'logged out' }]);
+    w.report = one();
+    await w.run();
+    assert.strictEqual(w.signals.length, 0, 'no alert, no signal');
+    w.report = one();
+    await w.run();
+    assert.strictEqual(w.signals.length, 1);
+    let s = w.signals[0];
+    assert.strictEqual(s.secret, ROUTER_SECRET);
+    assert.deepStrictEqual([s.source, s.component, s.fingerprint, s.status], ['axiom-canary', 'axiom-data', 'axiom:stream:viewers', 'firing']);
+    assert.strictEqual(s.summary, 'axiom broken: stream:viewers');
+    assert.strictEqual(s.evidenceUrl, 'https://axiom.test/selfcheck');
+    assert.match(s.detail, /• stream:viewers: no frames/);
+
+    w.report = two();
+    await w.run();
+    assert.deepStrictEqual(w.signals.slice(1).map((x) => [x.fingerprint, x.status]), [['axiom:stream:viewers', 'resolved'], ['axiom:login,stream:viewers', 'firing']]);
+
+    w.routerStatus = 'down';
+    w.clock += 6 * 60 * 60 * 1000;
+    w.report = two();
+    await w.run();
+    assert.strictEqual(w.sent.length, 3, 'the reminder still went to ntfy');
+    w.routerStatus = 200;
+    w.report = two();
+    await w.run();
+    assert.strictEqual(w.sent.length, 3, 'and is not repeated because the router failed');
+
+    w.report = null;
+    await w.run();
+    s = w.signals[w.signals.length - 1];
+    assert.deepStrictEqual([s.fingerprint, s.status, s.summary], ['axiom:login,stream:viewers', 'resolved', 'axiom recovered']);
+    assert.ok(!JSON.stringify(w.sent).includes(ROUTER_SECRET), 'the router secret never reaches ntfy');
 });
 
 test('missing secrets stop the canary at start', () => {

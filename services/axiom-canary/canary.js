@@ -12,6 +12,8 @@
 //   - after FAIL_RUNS failing runs in a row, again when the set of failures changes, a
 //     reminder every REMIND_MS while it lasts, and one recovery message
 //   - `outdated` checks (the site moved on, nothing broken yet): low priority, once per change
+// With AUTOFIX_WEBHOOK_URL and AUTOFIX_WEBHOOK_SECRET set, each alert also goes to the autofix router (n8n) as
+// firing/resolved events, fingerprinted by the failing check names. Best effort: never blocks or repeats an alert.
 // State (open alert, streaks) survives restarts in STATE_FILE.
 //
 // usage: node canary.js [--runs N]   (default: forever; --runs 1 for a single run)
@@ -44,6 +46,8 @@ function config(env) {
     c.NTFY_URL = c.NTFY_URL.replace(/\/+$/, '');
     c.AXIOM_API_KEY = env.AXIOM_API_KEY || '';
     c.NTFY_TOKEN = env.NTFY_TOKEN || '';
+    c.AUTOFIX_WEBHOOK_URL = env.AUTOFIX_WEBHOOK_URL || '';
+    c.AUTOFIX_WEBHOOK_SECRET = env.AUTOFIX_WEBHOOK_SECRET || '';
     return c;
 }
 
@@ -57,7 +61,10 @@ function createCanary({ env = process.env, fetch = globalThis.fetch, WebSocket =
     if (!c.AXIOM_API_KEY) throw new Error('AXIOM_API_KEY is not set (Infisical /axiom-canary)');
     if (!c.NTFY_TOKEN) throw new Error('NTFY_TOKEN is not set (Infisical /axiom-canary)');
     // Never echo a secret, even inside an error message.
-    const scrub = (text) => String(text).split(c.AXIOM_API_KEY).join('<key>').split(c.NTFY_TOKEN).join('<token>');
+    const scrub = (text) => {
+        const out = String(text).split(c.AXIOM_API_KEY).join('<key>').split(c.NTFY_TOKEN).join('<token>');
+        return c.AUTOFIX_WEBHOOK_SECRET ? out.split(c.AUTOFIX_WEBHOOK_SECRET).join('<secret>') : out;
+    };
 
     // --- state ---
 
@@ -166,6 +173,30 @@ function createCanary({ env = process.env, fetch = globalThis.fetch, WebSocket =
         log(`sent "${title}"`);
     }
 
+    // --- autofix router (optional) ---
+
+    const fingerprint = (prefix, names) => `${prefix}:${names.join(',')}`;
+
+    // Sends events to the autofix router, which opens or updates a GitHub issue per fingerprint. Called after a
+    // successful ntfy send; a failure here is only logged, so it can't block or repeat the alert.
+    async function signal(events) {
+        if (!c.AUTOFIX_WEBHOOK_URL || !c.AUTOFIX_WEBHOOK_SECRET) return;
+        for (const event of events) {
+            try {
+                const res = await fetch(c.AUTOFIX_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'x-autofix-secret': c.AUTOFIX_WEBHOOK_SECRET, 'content-type': 'application/json' },
+                    body: JSON.stringify({ source: 'axiom-canary', component: 'axiom-data', evidenceUrl: `${c.AXIOM_URL}/selfcheck`, ...event }),
+                    signal: AbortSignal.timeout(c.HTTP_TIMEOUT_MS),
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                log(`autofix: ${event.status} ${event.fingerprint}`);
+            } catch (err) {
+                log(`autofix signal failed (${event.status} ${event.fingerprint}): ${scrub((err && err.message) || err)}`);
+            }
+        }
+    }
+
     // --- one run ---
 
     async function runOnce() {
@@ -188,20 +219,28 @@ function createCanary({ env = process.env, fetch = globalThis.fetch, WebSocket =
             state.failingSince = state.failingSince || t;
             log(`failing (${state.failStreak} in a row): ${failing.join(', ')}`);
             const lines = [...describe(failing, result.failures), '', footer];
+            const firing = (title) => ({ fingerprint: fingerprint('axiom', failing), status: 'firing', summary: title, detail: lines.join('\n') });
             if (!state.alerting && state.failStreak >= c.FAIL_RUNS) {
-                await notify({ title: `axiom broken: ${shortList(failing)}`, lines: [`Failing for ${plural(state.failStreak, 'run')} in a row:`, ...lines], priority: 4, tags: ['rotating_light'] });
+                const title = `axiom broken: ${shortList(failing)}`;
+                await notify({ title, lines: [`Failing for ${plural(state.failStreak, 'run')} in a row:`, ...lines], priority: 4, tags: ['rotating_light'] });
+                await signal([firing(title)]);
                 Object.assign(state, { alerting: true, alerted: failing, alertedAt: t });
             } else if (state.alerting && !sameSet(failing, state.alerted)) {
-                await notify({ title: `axiom broken (changed): ${shortList(failing)}`, lines: [`Was: ${state.alerted.join(', ')}`, ...lines], priority: 4, tags: ['rotating_light'] });
+                const title = `axiom broken (changed): ${shortList(failing)}`;
+                await notify({ title, lines: [`Was: ${state.alerted.join(', ')}`, ...lines], priority: 4, tags: ['rotating_light'] });
+                await signal([{ fingerprint: fingerprint('axiom', state.alerted), status: 'resolved', summary: `replaced by: ${shortList(failing)}` }, firing(title)]);
                 Object.assign(state, { alerted: failing, alertedAt: t });
             } else if (state.alerting && t - state.alertedAt >= c.REMIND_MS) {
-                await notify({ title: `axiom still broken: ${shortList(failing)}`, lines: [`Failing for ${duration(t - state.failingSince)}:`, ...lines], priority: 3, tags: ['rotating_light'] });
+                const title = `axiom still broken: ${shortList(failing)}`;
+                await notify({ title, lines: [`Failing for ${duration(t - state.failingSince)}:`, ...lines], priority: 3, tags: ['rotating_light'] });
+                await signal([firing(title)]);
                 state.alertedAt = t;
             }
         } else {
             log('ok');
             if (state.alerting) {
                 await notify({ title: 'axiom recovered', lines: [`Everything passes again after ${duration(t - state.failingSince)}.`, `Was: ${state.alerted.join(', ')}`, '', footer], priority: 3, tags: ['white_check_mark'] });
+                await signal([{ fingerprint: fingerprint('axiom', state.alerted), status: 'resolved', summary: 'axiom recovered' }]);
             }
             Object.assign(state, { failStreak: 0, alerting: false, alerted: [], alertedAt: 0, failingSince: 0 });
         }
@@ -210,11 +249,16 @@ function createCanary({ env = process.env, fetch = globalThis.fetch, WebSocket =
         if (result.outdated) {
             const outdated = Object.keys(result.outdated).sort();
             if (!sameSet(outdated, state.outdated)) {
+                const events = state.outdated.length ? [{ fingerprint: fingerprint('axiom-outdated', state.outdated), status: 'resolved', summary: outdated.length ? `replaced by: ${shortList(outdated)}` : 'no longer outdated' }] : [];
                 if (outdated.length) {
-                    await notify({ title: `axiom outdated: ${shortList(outdated)}`, lines: ['Still working, but the site has moved on:', ...describe(outdated, result.outdated), '', footer], priority: 2, tags: ['hourglass_flowing_sand'] });
+                    const title = `axiom outdated: ${shortList(outdated)}`;
+                    const lines = ['Still working, but the site has moved on:', ...describe(outdated, result.outdated), '', footer];
+                    await notify({ title, lines, priority: 2, tags: ['hourglass_flowing_sand'] });
+                    events.push({ fingerprint: fingerprint('axiom-outdated', outdated), status: 'firing', summary: title, detail: lines.join('\n') });
                 } else {
                     await notify({ title: 'axiom no longer outdated', lines: [`Cleared: ${state.outdated.join(', ')}`, '', footer], priority: 1, tags: ['white_check_mark'] });
                 }
+                await signal(events);
                 state.outdated = outdated;
             }
         }
