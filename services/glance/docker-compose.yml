@@ -1,13 +1,15 @@
 # Glance dashboard for glance.pi.sniperoo.app on the Pi, tailnet only.
 # Komodo stack "glance" (main.toml) deploys this folder from its own clone of
-# the repo. config/ and assets/ come from git; the secrets stay on the Pi in
-# /srv/glance/secrets (root 0700), never in git.
+# the repo. config/ and assets/ come from git; the secrets come from
+# Infisical (Homelab -> prod -> /glance), never from git.
 #
-# - Glance reads each secret itself with ${secret:<name>} from /run/secrets,
-#   so nothing secret is in the container env, `docker inspect` or Komodo.
+# - The stack's pre_deploy (scripts/fetch-secrets-pre-deploy.sh glance)
+#   writes them to .env here, and its post_deploy deletes that file again.
+#   They end up as container env vars, so they show in `docker inspect` and
+#   in Komodo's container view.
 # - Glance substitutes ${...} even inside commented-out YAML lines: an unset
-#   variable or a missing secret file anywhere in an included file stops it
-#   from starting. Comment out the `$include:` line of a widget instead.
+#   variable anywhere in an included file stops it from starting. Comment
+#   out the `$include:` line of a widget instead.
 # - Egress is needed: weather, markets, cinema and word-of-the-day widgets
 #   fetch from the internet on the server side.
 name: glance
@@ -23,15 +25,14 @@ services:
     security_opt: ["no-new-privileges:true"]
     mem_limit: 128m
     pids_limit: 128
+    env_file:
+      # From Infisical, present only during a Komodo deploy. Not required,
+      # so Komodo's stop and restart work after post_deploy removed it.
+      - path: .env
+        required: false
     environment:
       # Used by links and monitor checks in config/ (not a secret).
       DOMAIN_NAME: pi.sniperoo.app
-    secrets:
-      - secret_key
-      - admin_password_hash
-      - email_second
-      - email_third
-      - email_fourth
     volumes:
       - ./config:/app/config:ro
       - ./assets:/app/assets:ro
@@ -53,25 +54,6 @@ services:
       options:
         max-size: 10m
         max-file: "3"
-
-secrets:
-  # All root:65530 0640, written by pi-glance.sh secrets. Compose in Komodo
-  # Periphery warns that the files "do not exist": Periphery can't see /srv,
-  # but the Docker daemon mounts them from the host.
-  secret_key:
-    # 64 random bytes, base64 (Glance's session signing key).
-    file: /srv/glance/secrets/secret_key
-  admin_password_hash:
-    # bcrypt hash of the dashboard password for user "admin".
-    file: /srv/glance/secrets/admin_password_hash
-  # Titles of the Gmail bookmarks (mail-bookmarks.yml), kept out of the
-  # public repo.
-  email_second:
-    file: /srv/glance/secrets/email_second
-  email_third:
-    file: /srv/glance/secrets/email_third
-  email_fourth:
-    file: /srv/glance/secrets/email_fourth
 
 networks:
   # Outbound for the widgets that fetch from the internet.

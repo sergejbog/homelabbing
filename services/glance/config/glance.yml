@@ -17,8 +17,8 @@ pages:
   # - $include: finance.yml
 
 auth:
-  # Both files are in /srv/glance/secrets on the Pi (pi-glance.sh secrets).
-  secret-key: ${secret:secret_key}
+  # Both from Infisical (Homelab -> prod -> /glance), see README.md.
+  secret-key: ${GLANCE_SECRET_KEY}
   users:
     admin:
-      password-hash: ${secret:admin_password_hash}
+      password-hash: ${GLANCE_ADMIN_PASSWORD_HASH}
