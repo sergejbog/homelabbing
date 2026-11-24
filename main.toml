@@ -7,6 +7,19 @@ enabled = true
 ##
 
 [[stack]]
+name = "glance"
+description = "Glance dashboard at https://glance.pi.sniperoo.app. Secrets in /srv/glance/secrets (pi-glance.sh secrets)."
+[stack.config]
+server = "pi"
+links = ["https://glance.pi.sniperoo.app"]
+repo = "sergejbog/homelabbing"
+webhook_enabled = false
+run_directory = "services/glance"
+file_paths = ["docker-compose.yml"]
+
+##
+
+[[stack]]
 name = "infisical"
 description = "Infisical at https://secrets.pi.sniperoo.app. The stopped archive of the old instance is run by hand, not by Komodo."
 [stack.config]

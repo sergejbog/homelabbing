@@ -3,38 +3,35 @@
   # hide-desktop-navigation: true
   # head-widgets:
 
+  # Commented out until they exist on the Pi: Uptime Kuma, the Grafana
+  # dashboard and the Komodo stacks. Comment out whole `$include:` lines only:
+  # Glance fills in variables even on commented-out lines, so a widget with an
+  # unset variable must live in its own file.
   columns:
     - size: small
       widgets:
-        - $include: ./widgets/uptime-kuma.yml
+        # - $include: ./widgets/uptime-kuma.yml
         - type: server-stats
           servers:
             - type: local
-              name: Hetzner Server
-            - type: remote
-              name: Ex44 Server
-              url: http://${SECONDARY_SERVER_IP}:${GLANCE_REMOTE_PORT}
-              token: ${GLANCE_REMOTE_TOKEN}
-            - type: remote
               name: Raspberry Pi
-              url: https://glance-agent.pi.${DOMAIN_NAME}
-              token: ${GLANCE_REMOTE_TOKEN}
+              # Inside the container most mountpoints are bind mounts; "/" is
+              # the overlay on the SD card.
+              hide-mountpoints-by-default: true
+              mountpoints:
+                "/":
+                  name: SD card
+                  hide: false
         - $include: ./widgets/mail-bookmarks.yml
 
     - size: full
       widgets:
-        # Collapsed by default — <details> keeps it a pure-CSS toggle (styles in assets/user.css).
-        - type: html
-          source: |
-            <details class="grafana-panel">
-              <summary>Grafana Dashboard</summary>
-              <iframe src="https://grafana.${DOMAIN_NAME}/public-dashboards/${GRAFANA_PUBLIC_DASHBOARD_ID}" frameborder="0" loading="lazy"></iframe>
-            </details>
+        # - $include: ./widgets/grafana.yml
         - type: group
           widgets:
             - $include: ./widgets/monitor.yml
 
-            - $include: ./widgets/komodo.yml
+            # - $include: ./widgets/komodo.yml
         - $include: ./widgets/cineplexx.yml
 
     - size: small

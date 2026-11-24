@@ -1,0 +1,10 @@
+# Collapsed by default: <details> keeps it a pure-CSS toggle (styles in assets/user.css).
+# Not included yet (see home.yml): there is no Grafana on the Pi. Before you
+# include it, give the container the GRAFANA_PUBLIC_DASHBOARD_ID variable or
+# switch it to a secret; Glance refuses to start while it is missing.
+- type: html
+  source: |
+    <details class="grafana-panel">
+      <summary>Grafana Dashboard</summary>
+      <iframe src="https://grafana.${DOMAIN_NAME}/public-dashboards/${GRAFANA_PUBLIC_DASHBOARD_ID}" frameborder="0" loading="lazy"></iframe>
+    </details>

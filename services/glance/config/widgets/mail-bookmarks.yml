@@ -8,12 +8,12 @@
         - title: Personal
           url: https://mail.google.com/mail/u/1/
           icon: si:gmail
-        - title: ${GLANCE_EMAIL_SECOND}
+        - title: ${secret:email_second}
           url: https://mail.google.com/mail/u/0/
           icon: si:gmail
-        - title: ${GLANCE_EMAIL_THIRD}
+        - title: ${secret:email_third}
           url: https://mail.google.com/mail/u/4/
           icon: si:gmail
-        - title: ${GLANCE_EMAIL_FOURTH}
+        - title: ${secret:email_fourth}
           url: https://mail.google.com/mail/u/2/
           icon: si:gmail

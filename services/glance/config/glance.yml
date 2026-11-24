@@ -1,5 +1,8 @@
 server:
   assets-path: /app/assets
+  # Behind Traefik: use the rightmost X-Forwarded-For (set by Traefik) as the
+  # client address for the login rate limit.
+  proxied: true
 
 theme:
   background-color: 225 14 15
@@ -14,7 +17,8 @@ pages:
   # - $include: finance.yml
 
 auth:
-  secret-key: ${GLANCE_SECRET_KEY}
+  # Both files are in /srv/glance/secrets on the Pi (pi-glance.sh secrets).
+  secret-key: ${secret:secret_key}
   users:
     admin:
-      password-hash: ${GLANCE_ADMIN_PASSWORD_HASH}
+      password-hash: ${secret:admin_password_hash}
