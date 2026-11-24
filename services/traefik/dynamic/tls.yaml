@@ -1,0 +1,7 @@
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      # Refuse handshakes whose SNI matches no certificate (for example
+      # https://100.65.226.80/ or a name outside *.pi.sniperoo.app).
+      sniStrict: true

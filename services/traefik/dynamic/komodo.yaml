@@ -1,0 +1,24 @@
+# Komodo Core at https://komodo.pi.sniperoo.app.
+# Deployed with the traefik stack.
+# No tls section: the https entrypoint's wildcard applies (see traefik.yaml).
+http:
+  routers:
+    komodo:
+      rule: Host(`komodo.pi.sniperoo.app`)
+      entryPoints:
+        - https
+      service: komodo
+    komodo-webhooks-off:
+      # Deploys are manual and reviewed: no git webhooks. Longer rule, so it
+      # wins over the router above.
+      rule: Host(`komodo.pi.sniperoo.app`) && PathPrefix(`/listener`)
+      entryPoints:
+        - https
+      middlewares:
+        - deny-all
+      service: komodo
+  services:
+    komodo:
+      loadBalancer:
+        servers:
+          - url: http://komodo-core:9120
