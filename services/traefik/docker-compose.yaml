@@ -1,44 +1,64 @@
+# Traefik for *.pi.sniperoo.app on the Pi, tailnet only.
+# Komodo stack "traefik" (main.toml) deploys this folder from its own clone
+# of the repo, so route changes go live only when this stack is deployed.
+#
+# - traefik.yaml and dynamic/ come from the repo. The certificate store and
+#   the deSEC token stay on the Pi in /srv/traefik (root 0700), never in git.
+# - File provider only: Traefik has NO Docker socket. Add a service by adding
+#   a route file to dynamic/.
+name: traefik
+
 services:
   traefik:
-    # The official v3 Traefik docker image
-    image: traefik:latest
-    container_name: "traefik"
-    env_file: .env
-    # Enables the web UI and tells Traefik to listen to docker
-    ports:
-      - "80:80" # http->https redirect; also serves redirects for hostnames whose services live on other servers
-      - "443:443"
-      - "5432:5432"
-      - "3306:3306"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.entrypoints=http" # restricts dashboard to internal entrypoint
-      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN_NAME}`)" # if you want a internal domain, get the wildcard cert for it and then choos traefik-dashboard.home.yourdomain.co.uk or what you want
-      - "traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https"
-      - "traefik.http.routers.traefik.middlewares=traefik-https-redirect"
-      - "traefik.http.routers.traefik-secure.entrypoints=https"
-      - "traefik.http.routers.traefik-secure.rule=Host(`traefik.${DOMAIN_NAME}`)" # if you want a internal domain, get the wildcard cert for it and then choos traefik-dashboard.home.yourdomain.co.uk or what you want
-      - "traefik.http.routers.traefik-secure.middlewares=admin-auth@file"
-      - "traefik.http.routers.traefik-secure.tls=true"
-      - "traefik.http.routers.traefik-secure.tls.certresolver=myresolver"
-      - "traefik.http.routers.traefik-secure.service=api@internal"
-
-    volumes:
-      # Absolute path (not repo-relative) so acme.json survives a Komodo re-clone
-      - "/etc/komodo/traefik/letsencrypt:/letsencrypt"
-      - "./traefik.yaml:/traefik.yaml:ro"
-      # Directory mount (not single files) so git pulls / regeneration swap
-      # file inodes without breaking the file-provider watch
-      - "./dynamic:/dynamic:ro"
-      # So that Traefik can listen to the Docker events
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /etc/localtime:/etc/localtime:ro
-      - ./logs:/var/log/traefik
-    networks:
-      proxy:
+    image: traefik:v3.7.20@sha256:8301d6f60957a422f98918aacf2b01482abde3e74ead3719aabdb7c64045fe28
+    container_name: traefik
     restart: unless-stopped
+    user: "65532:65532"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    pids_limit: 256
+    ports:
+      # Tailnet IP only, never 0.0.0.0: Docker-published ports bypass ufw.
+      # tailscaled accepts tailscale0 traffic before ufw, so the tailnet
+      # policy (owner -> tag:homelab tcp:443) is the filter here.
+      - "100.65.226.80:443:8443"
+    environment:
+      DESEC_TOKEN_FILE: /run/secrets/desec_token
+      DESEC_TTL: "3600"
+      DESEC_PROPAGATION_TIMEOUT: "300"
+    secrets:
+      - desec_token
+    volumes:
+      - ./traefik.yaml:/etc/traefik/traefik.yaml:ro
+      - ./dynamic:/etc/traefik/dynamic:ro
+      - /srv/traefik/data:/data
+    tmpfs:
+      - /tmp
+    networks:
+      - egress
+      - proxy
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+secrets:
+  desec_token:
+    # Write-only on one TXT record in acme.sniperoo.app (deSEC policy).
+    # root:65532 0640, so the non-root container user can read it. Compose
+    # in Komodo Periphery warns that the file "does not exist": Periphery
+    # can't see /srv, but the Docker daemon mounts it from the host.
+    file: /srv/traefik/secrets/desec_token
 
 networks:
+  # Outbound for ACME (Let's Encrypt, deSEC API and nameservers) and the
+  # published port.
+  egress: {}
+  # Shared with backend services. internal: no internet through it.
   proxy:
+    name: proxy
     external: true

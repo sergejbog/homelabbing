@@ -1,0 +1,30 @@
+# Fresh Infisical at https://secrets.pi.sniperoo.app.
+# Deployed with the traefik stack. No tls section: the https entrypoint's
+# wildcard applies (see traefik.yaml).
+#
+# Machine identity logins are closed here. The free plan has no
+# Universal Auth trusted IPs, so the network does that job: pi-komodo logs
+# in from Komodo Periphery over the internal infisical_api network, straight
+# to infisical-backend:8080, and its client secret is useless through
+# Traefik. The web UI does not use this path.
+http:
+  routers:
+    infisical:
+      rule: Host(`secrets.pi.sniperoo.app`)
+      entryPoints:
+        - https
+      service: infisical
+    infisical-machine-login-off:
+      # The only universal-auth login route in v0.167.14. Longer rule, so it
+      # wins over the router above.
+      rule: Host(`secrets.pi.sniperoo.app`) && PathPrefix(`/api/v1/auth/universal-auth/login`)
+      entryPoints:
+        - https
+      middlewares:
+        - deny-all
+      service: infisical
+  services:
+    infisical:
+      loadBalancer:
+        servers:
+          - url: http://infisical-backend:8080

@@ -1,0 +1,10 @@
+# Shared middlewares for the Pi's Traefik.
+# Deployed with the traefik stack. deny-all is used by other route files.
+http:
+  middlewares:
+    # 403 for everyone: clients always arrive from tailnet addresses, never
+    # from 127.0.0.1. Used to close single paths on a host.
+    deny-all:
+      ipAllowList:
+        sourceRange:
+          - 127.0.0.1/32

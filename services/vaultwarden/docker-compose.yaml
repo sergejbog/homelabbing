@@ -1,30 +1,74 @@
+# Vaultwarden for vw.pi.sniperoo.app on the Pi, tailnet only.
+# Komodo stack "vaultwarden" (main.toml) deploys this file. Data and the admin
+# token stay on the Pi in /srv/vaultwarden (root, 0700), never in git.
+#
+# - Restored from snapshot bcb2be73 (Oct 24 01:10 UTC) without rsa_key*,
+#   config.json or icon_cache, so the server made a new RSA key on first start
+#   and every old session and refresh token is invalid.
+# - Only on the internal proxy network: no internet. So no icon downloads, no
+#   SMTP, no mobile push. Clients sync on open and on pull-to-refresh.
+# - The admin token is an argon2id hash read from a file (ADMIN_TOKEN_FILE),
+#   so it is not in `docker inspect`. Settings saved in the admin page go to
+#   data/config.json and override this file; keep config changes here.
+name: vaultwarden
+
 services:
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.37.5@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f
     container_name: vaultwarden
     restart: unless-stopped
-    env_file: .env
+    user: "65533:65533"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    pids_limit: 128
+    environment:
+      DOMAIN: https://vw.pi.sniperoo.app
+      # Unprivileged port: the container runs as 65533 with no capabilities.
+      ROCKET_PORT: "8080"
+      SIGNUPS_ALLOWED: "false"
+      INVITATIONS_ALLOWED: "false"
+      PASSWORD_HINTS_ALLOWED: "false"
+      SHOW_PASSWORD_HINT: "false"
+      # No internet: serve generic icons, never fetch.
+      ICON_SERVICE: internal
+      DISABLE_ICON_DOWNLOAD: "true"
+      ICON_CACHE_TTL: "0"
+      ADMIN_TOKEN_FILE: /run/secrets/admin_token
+      ADMIN_SESSION_LIFETIME: "20"
+      # Traefik sets X-Real-IP from the tailnet source address; Vaultwarden
+      # trusts it from non-global addresses (the proxy network) by default.
+    secrets:
+      - admin_token
     volumes:
-      - vw-data:/data/
-      - /home/johnny/.local/share/mkcert:/mkcert/
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.vaultwarden.entrypoints=https"
-      - "traefik.http.routers.vaultwarden.rule=Host(`vw.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.vaultwarden.middlewares=AddForwardedHeader@file"
-      - "traefik.http.routers.vaultwarden.tls=true"
-      - "traefik.http.routers.vaultwarden.tls.certresolver=myresolver"
-      - "traefik.http.routers.vaultwarden.service=vaultwarden"
-      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
-      - "traefik.docker.network=proxy"
+      - /srv/vaultwarden/data:/data
+    tmpfs:
+      - /tmp
     networks:
-      proxy:
-    security_opt:
-      - no-new-privileges:true
+      - proxy
+    healthcheck:
+      # The image's own check, polled every 5s while starting instead of 60s.
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+      start_interval: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+secrets:
+  admin_token:
+    # One line, an argon2id PHC string. root:65533 0640. Written by
+    # pi-vaultwarden.sh token.
+    file: /srv/vaultwarden/secrets/admin_token
 
 networks:
+  # Shared with Traefik. internal: no internet through it.
   proxy:
+    name: proxy
     external: true
-
-volumes:
-  vw-data: {}

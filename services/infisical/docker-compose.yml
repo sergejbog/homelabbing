@@ -1,63 +1,186 @@
+# Fresh Infisical for secrets.pi.sniperoo.app on the Pi, tailnet only.
+# Komodo stack "infisical" (main.toml) deploys this file. Data and keys stay
+# on the Pi in /srv/infisical (root, 0700), never in git.
+#
+# - New ENCRYPTION_KEY, AUTH_SECRET and DB password, made on the Pi by
+#   pi-infisical.sh secrets. Infisical has no *_FILE support (checked in the
+#   v0.167.14 image), so a small entrypoint wrapper reads them from compose
+#   secrets. They stay out of `docker inspect` and out of Komodo's UI.
+# - Infisical sits on the internal proxy network (Traefik) and a private
+#   internal network for Postgres and Redis. Neither has internet access.
+# - Migrations run by themselves at start (dist/auto-start-migrations.mjs).
+name: infisical
+
 services:
-  backend:
+  infisical:
+    image: infisical/infisical:v0.167.14@sha256:ef645c5c17c61f928a75a18c1192cb0b24a5140fb7de6bfa24e717714c8fa8dd
+    # Komodo Periphery reaches it by this name over infisical_api
+    # (INFISICAL_API_URL in /etc/komodo/secrets/infisical.env).
     container_name: infisical-backend
     restart: unless-stopped
     depends_on:
-      db:
+      infisical-db:
         condition: service_healthy
       infisical-redis:
-        condition: service_started
-    image: infisical/infisical:latest
-    pull_policy: always
-    env_file: .env
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.infisical.entrypoints=https"
-      - "traefik.http.routers.infisical.rule=Host(`secrets.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.infisical.middlewares=AddForwardedHeader@file"
-      - "traefik.http.routers.infisical.tls=true"
-      - "traefik.http.routers.infisical.tls.certresolver=myresolver"
-      - "traefik.http.routers.infisical.service=infisical"
-      - "traefik.http.services.infisical.loadbalancer.server.port=8080"
-      - "traefik.docker.network=proxy"
+        condition: service_healthy
+    user: "1001:1001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    # Idle after first start: about 680 MiB anon, 740 MiB RSS (v0.167.14).
+    mem_limit: 1280m
+    pids_limit: 256
+    # The image's own command, with the three secrets exported first. If an
+    # upgrade changes the image's entrypoint, this fails loudly at start.
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        ENCRYPTION_KEY="$$(cat /run/secrets/encryption_key)"
+        AUTH_SECRET="$$(cat /run/secrets/auth_secret)"
+        DB_CONNECTION_URI="$$(cat /run/secrets/db_uri)"
+        export ENCRYPTION_KEY AUTH_SECRET DB_CONNECTION_URI
+        exec docker-entrypoint.sh ./standalone-entrypoint.sh
     environment:
-      - NODE_ENV=production
+      SITE_URL: https://secrets.pi.sniperoo.app
+      REDIS_URL: redis://infisical-redis:6379
+      TELEMETRY_ENABLED: "false"
+      # No internet anyway; this stops a lookup on every admin config call.
+      DISABLE_UPDATE_CHECK: "true"
+      # Unauthenticated secret sharing off; members can still share.
+      DISABLE_PUBLIC_SECRET_SHARING: "true"
+      # Honour X-Forwarded-For only from the proxy network (Traefik), not
+      # from anyone (the default). Machine identity trusted IPs rely on it.
+      # pi-infisical.sh checks that this is still the proxy subnet.
+      TRUSTED_PROXY_CIDRS: 172.18.0.0/16
+      # The image sets 2048; keep the heap under mem_limit.
+      NODE_OPTIONS: --max-old-space-size=640
+    secrets:
+      - encryption_key
+      - auth_secret
+      - db_uri
+    tmpfs:
+      # Secret scanning and SSH certificate work need a writable /tmp.
+      - /tmp:rw,exec,size=256m
     networks:
-      proxy:
+      - proxy
+      - internal
+      # Komodo Periphery only (phase 7): the pi-komodo machine identity logs
+      # in here, never through Traefik.
+      - infisical_api
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8080/api/status"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      # First start runs every migration on the Pi's SD card.
+      start_period: 600s
+      start_interval: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  infisical-db:
+    image: postgres:16.16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+    container_name: infisical-db
+    restart: unless-stopped
+    # The image's postgres user, so the entrypoint needs no capabilities.
+    user: "70:70"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 512m
+    pids_limit: 128
+    shm_size: 128m
+    environment:
+      POSTGRES_USER: infisical
+      POSTGRES_DB: infisical
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
+    volumes:
+      - /srv/infisical/db:/var/lib/postgresql/data
+    tmpfs:
+      - /var/run/postgresql
+      - /tmp
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U infisical -d infisical"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+      start_interval: 3s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
 
   infisical-redis:
-    image: redis
+    image: redis:7.4.12-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     container_name: infisical-redis
-    env_file: .env
-    restart: always
-    environment:
-      - ALLOW_EMPTY_PASSWORD=yes
-    networks:
-      proxy:
+    restart: unless-stopped
+    # Unused on the host (the image's 999:1000 maps to systemd-journal and
+    # serbog's group there).
+    user: "65530:65530"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 256m
+    pids_limit: 64
+    # Infisical keeps its job queue and locks here: persistence on, and
+    # noeviction is required (docs, self-hosting requirements).
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 192mb
+      - --maxmemory-policy
+      - noeviction
     volumes:
-      - redis_data:/data
-
-  db:
-    container_name: infisical-db
-    image: postgres:14-alpine
-    restart: always
-    env_file: .env
-    volumes:
-      - pg_data:/var/lib/postgresql/data
+      - /srv/infisical/redis:/data
     networks:
-      proxy:
+      - internal
     healthcheck:
-      test: "pg_isready --username=${POSTGRES_USER} && psql --username=${POSTGRES_USER} --list"
-      interval: 5s
-      timeout: 10s
-      retries: 10
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+      start_interval: 2s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
 
-volumes:
-  pg_data:
-    driver: local
-  redis_data:
-    driver: local
+secrets:
+  # Written by pi-infisical.sh secrets; one value each, no trailing newline.
+  encryption_key:
+    file: /srv/infisical/secrets/encryption_key # root:1001 0640, 32 hex chars
+  auth_secret:
+    file: /srv/infisical/secrets/auth_secret # root:1001 0640, base64 of 32 bytes
+  db_uri:
+    file: /srv/infisical/secrets/db_uri # root:1001 0640, postgres:// URI with the password
+  db_password:
+    file: /srv/infisical/secrets/db_password # root:70 0640
 
 networks:
+  # Shared with Traefik. internal: no internet through it.
   proxy:
+    name: proxy
+    external: true
+  # Infisical, Postgres and Redis only.
+  internal:
+    internal: true
+  # infisical-backend and Komodo Periphery only. internal: no internet.
+  # Created by pi-komodo.sh prep.
+  infisical_api:
+    name: infisical_api
     external: true

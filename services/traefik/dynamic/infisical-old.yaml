@@ -1,0 +1,17 @@
+# Archive of the old Infisical at https://infisical-old.pi.sniperoo.app
+# (look-only, stopped by default; Traefik answers 502 while it is stopped).
+# Deployed with the traefik stack; the archive itself is started and stopped
+# by hand (pi-infisical.sh archive-start / archive-stop).
+# No tls section: the https entrypoint's wildcard applies (see traefik.yaml).
+http:
+  routers:
+    infisical-old:
+      rule: Host(`infisical-old.pi.sniperoo.app`)
+      entryPoints:
+        - https
+      service: infisical-old
+  services:
+    infisical-old:
+      loadBalancer:
+        servers:
+          - url: http://infisical-old:8080
