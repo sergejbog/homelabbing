@@ -1,21 +1,3 @@
-# Komodo resources for the Raspberry Pi (rebuilt November 2026).
-#
-# Komodo Core reads this file through the resource sync "pi" below. Nothing
-# here applies by itself: the owner reviews the sync's pending changes in the
-# UI and clicks Execute, then reviews each stack's diff and clicks Deploy.
-#
-# Rules for this file (the repo is public):
-# - No secrets. Secret values live on the Pi (/srv/<service>/secrets, or
-#   Infisical through scripts/fetch-secrets-pre-deploy.sh).
-# - No webhooks, no auto updates, no `deploy = true`: a push to main changes
-#   nothing until the owner acts.
-# - Each stack clones the repo for itself (`repo`, not `linked_repo`), so
-#   deploying one stack never changes another stack's files on disk.
-#
-# The old three-server layout (Local, ex44, raspberry-pi) is in git history.
-# Folders under services/ that no [[stack]] here points at are the old
-# compose files, not yet ported to the Pi.
-
 [[server]]
 name = "pi"
 description = "Raspberry Pi 5 at home. Tailnet only; Periphery connects out to Core."
@@ -25,17 +7,29 @@ enabled = true
 ##
 
 [[stack]]
+name = "infisical"
+description = "Infisical at https://secrets.pi.sniperoo.app. The stopped archive of the old instance is run by hand, not by Komodo."
+[stack.config]
+server = "pi"
+links = [
+  "https://secrets.pi.sniperoo.app"
+]
+repo = "sergejbog/homelabbing"
+webhook_enabled = false
+run_directory = "services/infisical"
+file_paths = ["docker-compose.yml"]
+
+##
+
+[[stack]]
 name = "traefik"
 description = "Reverse proxy for *.pi.sniperoo.app on the tailnet IP. Wildcard certificate via deSEC. Route files: services/traefik/dynamic."
 [stack.config]
 server = "pi"
 repo = "sergejbog/homelabbing"
-branch = "main"
+webhook_enabled = false
 run_directory = "services/traefik"
 file_paths = ["docker-compose.yaml"]
-webhook_enabled = false
-poll_for_updates = false
-auto_update = false
 
 ##
 
@@ -44,30 +38,20 @@ name = "vaultwarden"
 description = "Vaultwarden at https://vw.pi.sniperoo.app."
 [stack.config]
 server = "pi"
+links = ["https://vw.pi.sniperoo.app"]
 repo = "sergejbog/homelabbing"
-branch = "main"
+webhook_enabled = false
 run_directory = "services/vaultwarden"
 file_paths = ["docker-compose.yaml"]
-webhook_enabled = false
-poll_for_updates = false
-auto_update = false
-links = ["https://vw.pi.sniperoo.app"]
 
 ##
 
-[[stack]]
-name = "infisical"
-description = "Infisical at https://secrets.pi.sniperoo.app. The stopped archive of the old instance is run by hand, not by Komodo."
-[stack.config]
+[[repo]]
+name = "homelabbing"
+[repo.config]
 server = "pi"
+git_account = "sergejbog"
 repo = "sergejbog/homelabbing"
-branch = "main"
-run_directory = "services/infisical"
-file_paths = ["docker-compose.yml"]
-webhook_enabled = false
-poll_for_updates = false
-auto_update = false
-links = ["https://secrets.pi.sniperoo.app"]
 
 ##
 
@@ -75,11 +59,6 @@ links = ["https://secrets.pi.sniperoo.app"]
 name = "pi"
 description = "Syncs this file. Review pending changes before Execute."
 [resource_sync.config]
-repo = "sergejbog/homelabbing"
-branch = "main"
+linked_repo = "homelabbing"
 resource_path = ["main.toml"]
-webhook_enabled = false
-# No write-back: Komodo has no GitHub credentials.
-managed = false
-# Never delete resources that are missing from this file.
-delete = false
+managed = true
