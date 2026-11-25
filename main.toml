@@ -7,6 +7,23 @@ enabled = true
 ##
 
 [[stack]]
+name = "bookorbit"
+description = "BookOrbit library at https://bookorbit.pi.sniperoo.app. Data and books in /srv/bookorbit. Secrets from Infisical /bookorbit."
+[stack.config]
+server = "pi"
+links = ["https://bookorbit.pi.sniperoo.app"]
+repo = "sergejbog/homelabbing"
+webhook_enabled = false
+run_directory = "services/bookorbit"
+file_paths = ["docker-compose.yaml"]
+pre_deploy.path = "../../scripts"
+pre_deploy.command = "bash ./fetch-secrets-pre-deploy.sh bookorbit"
+post_deploy.path = "../../scripts"
+post_deploy.command = "bash ./cleanup-secrets-post-deploy.sh bookorbit"
+
+##
+
+[[stack]]
 name = "glance"
 description = "Glance dashboard at https://glance.pi.sniperoo.app. Secrets from Infisical /glance."
 [stack.config]
