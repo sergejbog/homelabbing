@@ -1,0 +1,15 @@
+# BookOrbit at https://bookorbit.pi.sniperoo.app.
+# Deployed with the traefik stack. No tls section: the https entrypoint's
+# wildcard applies (see traefik.yaml).
+http:
+  routers:
+    bookorbit:
+      rule: Host(`bookorbit.pi.sniperoo.app`)
+      entryPoints:
+        - https
+      service: bookorbit
+  services:
+    bookorbit:
+      loadBalancer:
+        servers:
+          - url: http://bookorbit:3000

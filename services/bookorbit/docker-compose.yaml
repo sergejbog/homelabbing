@@ -1,0 +1,137 @@
+# BookOrbit (library and reader for ebooks, comics and audiobooks) for
+# bookorbit.pi.sniperoo.app on the Pi, tailnet only. Komodo stack "bookorbit"
+# (main.toml) deploys this file. Data, books and the database stay on the Pi
+# in /srv/bookorbit (root 0700, made by pi-bookorbit.sh prep), never in git.
+#
+# - Secrets come from Infisical (Homelab -> prod -> /bookorbit). The stack's
+#   pre_deploy writes them to .env here, and its post_deploy deletes that
+#   file again. The app gets them as env vars, so they show in
+#   `docker inspect` and in Komodo's container view. Keys: README.md.
+# - Both containers run as unused uids with no capabilities. The app's
+#   entrypoint then takes its non-root path (no chown, no su-exec), so the
+#   upstream cap_add list is not needed. The /srv/bookorbit folders must
+#   already belong to these uids: pi-bookorbit.sh prep does that.
+# - Postgres is only on a private internal network. The app also has egress
+#   for metadata providers, cover search and release notes.
+# - Upstream's opt-in kokoro (TTS) and read-aloud worker are left out: too
+#   heavy for the Pi's CPU and RAM.
+name: bookorbit
+
+services:
+  bookorbit:
+    image: ghcr.io/bookorbit/bookorbit:3.10.0@sha256:507a84c08c100244c27bce68ce59670da5dc8c3bc9054dd4aea3630977c42885
+    container_name: bookorbit
+    restart: unless-stopped
+    depends_on:
+      bookorbit-db:
+        condition: service_healthy
+    user: "65528:65528"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 768m
+    pids_limit: 256
+    stop_grace_period: 30s
+    env_file:
+      # From Infisical, present only during a Komodo deploy. Not required,
+      # so Komodo's stop and restart work after post_deploy removed it.
+      - path: .env
+        required: false
+    environment:
+      APP_URL: https://bookorbit.pi.sniperoo.app
+      PORT: "3000"
+      POSTGRES_HOST: bookorbit-db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: bookorbit
+      POSTGRES_DB: bookorbit
+      TZ: Europe/Skopje
+      # The uid has no passwd entry, so HOME would be / (read-only).
+      HOME: /tmp
+      # Heap size from mem_limit: 65% below 2 GiB, about 500 MB here.
+      NODE_MAX_OLD_SPACE_SIZE: auto
+      # The library folder picker shows /books, not the container's root.
+      LIBRARY_BROWSE_ROOT: /books
+      # Honour X-Forwarded-* only from the proxy network (Traefik), not
+      # from every private address (the default). pi-bookorbit.sh status
+      # checks that this is still the proxy subnet.
+      TRUST_PROXY: 172.18.0.0/16
+    volumes:
+      - /srv/bookorbit/data:/data
+      - /srv/bookorbit/books:/books
+      # Uploads stream to os.tmpdir() before they move into a library. On
+      # disk, not tmpfs: a tmpfs keeps each upload in RAM, charged to
+      # mem_limit.
+      - /srv/bookorbit/tmp:/tmp
+    networks:
+      - proxy
+      - egress
+      - db
+    healthcheck:
+      # The image's own check, polled every 5s while starting.
+      test: ["CMD", "wget", "-q", "-T", "4", "-O", "/dev/null", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      # First start runs every migration on the Pi's SD card.
+      start_period: 300s
+      start_interval: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  bookorbit-db:
+    image: pgvector/pgvector:0.8.7-pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
+    container_name: bookorbit-db
+    restart: unless-stopped
+    # Unused on the host. The image's own postgres user (999) is taken
+    # there. initdb gets a passwd entry through the image's nss_wrapper.
+    user: "65527:65527"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 384m
+    pids_limit: 128
+    shm_size: 128m
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_USER: bookorbit
+      POSTGRES_DB: bookorbit
+      # From the Infisical .env through interpolation, so the database never
+      # sees the app's other secrets. Used only on the first start, when the
+      # data folder is empty. Changing it in Infisical later does NOT change
+      # the database password (README.md).
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+    volumes:
+      # Postgres 18 layout: PGDATA is /var/lib/postgresql/18/docker, so a
+      # later major upgrade can use pg_upgrade --link.
+      - /srv/bookorbit/postgres:/var/lib/postgresql
+    tmpfs:
+      - /var/run/postgresql
+      - /tmp
+    networks:
+      - db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookorbit -d bookorbit"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+      start_interval: 3s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  # Shared with Traefik. internal: no internet through it.
+  proxy:
+    name: proxy
+    external: true
+  # Outbound for metadata providers, cover search and release notes.
+  egress: {}
+  # The app and Postgres only. internal: no internet.
+  db:
+    internal: true
