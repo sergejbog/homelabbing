@@ -50,7 +50,7 @@
             - symbol: SOL-USD
               name: Solana
               chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:SOLUSD
-            - symbol: XETR-VWCE
+            - symbol: VWCE.DE
               name: Vanguard FTSE
               chart-link: https://www.tradingview.com/chart/?symbol=XETR:VWCE
         - $include: ./widgets/word-of-the-day.yml
