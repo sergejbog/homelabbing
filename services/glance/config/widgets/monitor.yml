@@ -1,70 +1,20 @@
+# Services that run on the Pi. Glance checks each one straight over the
+# proxy network (check-url); the url is the link you click.
+# Traefik itself isn't listed: if it is down, this page is unreachable.
+# Add a service here when it is ported to the Pi.
 - type: monitor
   cache: 1m
   title: Self Hosted Services
   sites:
-    - title: Komodo
-      url: https://komodo.${DOMAIN_NAME}
-      icon: sh:komodo
-    - title: Coolify
-      url: https://coolify.${DOMAIN_NAME}
-      icon: si:coolify
-    - title: Traefik
-      url: https://traefik.${DOMAIN_NAME}
-      icon: di:traefik
-      basic-auth:
-        username: admin
-        password: ${BASIC_AUTH_PASSWORD}
-    - title: Uptime Kuma
-      url: https://uptime-kuma.${DOMAIN_NAME}
-      icon: sh:uptime-kuma
-    - title: Grafana
-      url: https://grafana.${DOMAIN_NAME}
-      icon: si:grafana
-    - title: Wiki (BookStack)
-      url: https://wiki.${DOMAIN_NAME}
-      icon: sh:bookstack
-    - title: IT Tools
-      url: https://tools.${DOMAIN_NAME}
-      icon: sh:it-tools
-    - title: Change Detection
-      url: https://change.${DOMAIN_NAME}
-      icon: sh:changedetection
-    - title: Degoog
-      url: https://degoog.${DOMAIN_NAME}
-      icon: sh:degoog
-    - title: n8n
-      url: https://automation.${DOMAIN_NAME}
-      icon: sh:n8n
-    - title: Budibase
-      url: https://budibase.${DOMAIN_NAME}
-      icon: sh:budibase
-    - title: Reactive Resume
-      url: https://resume.${DOMAIN_NAME}
-      icon: sh:reactive-resume
-    - title: Backrest
-      url: https://backrest.${DOMAIN_NAME}
-      icon: sh:backrest
     - title: Vaultwarden
       url: https://vw.${DOMAIN_NAME}
+      check-url: http://vaultwarden:8080/alive
       icon: sh:vaultwarden-light
     - title: Infisical
       url: https://secrets.${DOMAIN_NAME}
+      check-url: http://infisical-backend:8080/api/status
       icon: di:infisical
-    - title: Chatwoot
-      url: https://chatwoot.${DOMAIN_NAME}
-      icon: sh:chatwoot
-    - title: Ntfy
-      url: https://notifications.${DOMAIN_NAME}
-      icon: sh:ntfy
-    - title: Apprise
-      url: https://apprise.${DOMAIN_NAME}
-      icon: sh:apprise
-      basic-auth:
-        username: admin
-        password: ${BASIC_AUTH_PASSWORD}
-    - title: Wallos
-      url: https://wallos.${DOMAIN_NAME}
-      icon: sh:wallos
-    - title: Pterodactyl
-      url: https://pterodactyl-fc4gwc4kwg8kwg0cs800ggso.coolify-server.${DOMAIN_NAME}/auth/login
-      icon: si:pterodactyl
+    - title: Komodo
+      url: https://komodo.${DOMAIN_NAME}
+      check-url: http://komodo-core:9120/
+      icon: sh:komodo

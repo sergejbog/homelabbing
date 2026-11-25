@@ -1,28 +1,65 @@
+# Glance dashboard for glance.pi.sniperoo.app on the Pi, tailnet only.
+# Komodo stack "glance" (main.toml) deploys this folder from its own clone of
+# the repo. config/ and assets/ come from git; the secrets come from
+# Infisical (Homelab -> prod -> /glance), never from git.
+#
+# - The stack's pre_deploy (scripts/fetch-secrets-pre-deploy.sh glance)
+#   writes them to .env here, and its post_deploy deletes that file again.
+#   They end up as container env vars, so they show in `docker inspect` and
+#   in Komodo's container view.
+# - Glance substitutes ${...} even inside commented-out YAML lines: an unset
+#   variable anywhere in an included file stops it from starting. Comment
+#   out the `$include:` line of a widget instead.
+# - Egress is needed: weather, markets, cinema and word-of-the-day widgets
+#   fetch from the internet on the server side.
+name: glance
+
 services:
   glance:
+    image: glanceapp/glance:v0.8.8@sha256:4d7445bc7971836858ffddee5d7501f1efbabb6e694a45b1dde1a789bb1943bb
     container_name: glance
-    image: glanceapp/glance
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.glance.entrypoints=https"
-      - "traefik.http.routers.glance.rule=Host(`glance.${DOMAIN_NAME}`)"
-      - "traefik.http.routers.glance.middlewares=AddForwardedHeader@file"
-      - "traefik.http.routers.glance.tls=true"
-      - "traefik.http.routers.glance.tls.certresolver=myresolver"
-      - "traefik.http.routers.glance.service=glance"
-      - "traefik.http.services.glance.loadbalancer.server.port=8080"
-      - "traefik.docker.network=proxy"
-    volumes: 
-      - ./config:/app/config
-      - ./assets:/app/assets
+    user: "65530:65530"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    pids_limit: 128
+    env_file:
+      # From Infisical, present only during a Komodo deploy. Not required,
+      # so Komodo's stop and restart work after post_deploy removed it.
+      - path: .env
+        required: false
+    environment:
+      # Used by links and monitor checks in config/ (not a secret).
+      DOMAIN_NAME: pi.sniperoo.app
+    volumes:
+      - ./config:/app/config:ro
+      - ./assets:/app/assets:ro
       - /etc/localtime:/etc/localtime:ro
-      # Optionally, also mount docker socket if you want to use the docker containers widget
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
+    tmpfs:
+      - /tmp
     networks:
-      proxy:
-    env_file: .env
+      - egress
+      - proxy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/healthz"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
 
 networks:
+  # Outbound for the widgets that fetch from the internet.
+  egress: {}
+  # Shared with Traefik and the other backends (monitor checks go straight
+  # to the containers). internal: no internet through it.
   proxy:
+    name: proxy
     external: true
