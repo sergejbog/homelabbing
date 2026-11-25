@@ -53,7 +53,7 @@
             - symbol: SOL-USD
               name: Solana
               chart-link: https://www.tradingview.com/chart/?symbol=COINBASE:SOLUSD
-            - symbol: JUP29210-USD
-              name: Jupiter
-              chart-link: https://www.tradingview.com/chart/?symbol=BINANCE:JUPUSDT
+            - symbol: XETR-VWCE
+              name: Vanguard FTSE
+              chart-link: https://www.tradingview.com/chart/?symbol=XETR:VWCE
         - $include: ./widgets/word-of-the-day.yml
