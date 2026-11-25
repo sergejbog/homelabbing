@@ -1,0 +1,15 @@
+# Glance dashboard at https://glance.pi.sniperoo.app.
+# Deployed with the traefik stack. No tls section: the https entrypoint's
+# wildcard applies (see traefik.yaml).
+http:
+  routers:
+    glance:
+      rule: Host(`glance.pi.sniperoo.app`)
+      entryPoints:
+        - https
+      service: glance
+  services:
+    glance:
+      loadBalancer:
+        servers:
+          - url: http://glance:8080
