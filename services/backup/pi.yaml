@@ -27,7 +27,9 @@ x-pg-dump: &pg-dump
     - |
       PGPASSWORD="$$(cat /run/secrets/db_password)"
       export PGPASSWORD
-      pg_dump -Fc --compress=0 -f /dumps/db.dump.tmp
+      # Fail instead of waiting forever behind a lock (e.g. a migration):
+      # the stack stays busy for Komodo while this runs.
+      pg_dump -Fc --compress=0 --lock-wait-timeout=60s -f /dumps/db.dump.tmp
       pg_restore --list /dumps/db.dump.tmp > /dev/null
       mv -f /dumps/db.dump.tmp /dumps/db.dump
       ls -l /dumps/db.dump

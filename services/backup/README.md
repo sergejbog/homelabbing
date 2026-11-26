@@ -6,29 +6,33 @@ folder of one Backblaze B2 bucket.
 
 ## How a night runs
 
-The Komodo procedure `backup-<server>` runs at 03:30 (Europe/Skopje):
+Three Komodo procedures per server (Europe/Skopje time):
 
-1. **Dump databases**, in parallel. Each dump job (in `<server>.yaml`) uses
-   the image and uid of the service it dumps and writes a consistent copy
-   to `/srv/backup/dumps/<service>/`. On the Pi:
-   - `dump-infisical`, `dump-bookorbit`: `pg_dump -Fc` to `db.dump`,
+1. **`backup-<server>-dumps`, 03:30.** Each dump job (in `<server>.yaml`)
+   uses the image and uid of the service it dumps and writes a consistent
+   copy to `/srv/backup/dumps/<service>/`. On the Pi, most critical first:
+   - `dump-vaultwarden`: `vaultwarden backup`, a `VACUUM INTO` copy, to
+     `db.sqlite3`. Next to it, `BackupCoreDatabase` dumps Komodo's own
+     database into `/srv/komodo/backups` (Komodo keeps the last 14);
+   - `dump-infisical`, then `dump-bookorbit`: `pg_dump -Fc` to `db.dump`,
      checked with `pg_restore --list`. They log in as `backup`, a role
      that can read every table and change nothing (`pg_read_all_data`),
-     made by `backup-host.sh pg-reader`;
-   - `dump-vaultwarden`: `vaultwarden backup`, a `VACUUM INTO` copy, to
-     `db.sqlite3`;
-   - `BackupCoreDatabase`: Komodo's own database, into
-     `/srv/komodo/backups` (Komodo keeps the last 14).
-2. **Upload**: `restic-backup` reads `/srv` read-only (minus
-   `excludes/<server>.txt`: the live database files, caches, and data kept
-   elsewhere) and uploads to `<bucket>/<server>/`.
+     made by `backup-host.sh pg-reader`.
 
-`backup-<server>-check` runs `restic check --read-data-subset=10%` on
-Sundays at 05:00.
+   **One stack job per stage:** Komodo marks the stack busy for a
+   `RunStackService` and refuses a second one while it runs, so jobs of
+   the same stack can't share a stage.
+2. **`backup-<server>`, 04:00: the upload.** `restic-backup` reads `/srv`
+   read-only (minus `excludes/<server>.txt`: the live database files,
+   caches, and data kept elsewhere) and uploads to `<bucket>/<server>/`.
+   It is its own procedure so that a failed dump doesn't stop it: the
+   failed dump's last good copy goes up with everything else.
+3. **`backup-<server>-check`, Sundays at 05:00:** `restic check
+   --read-data-subset=10%`.
 
-If a stage fails, the procedure stops and fails, and Komodo raises a
+If a stage fails, its procedure stops and fails, and Komodo raises a
 failure alert. Alerts aren't delivered anywhere yet (ntfy comes later), so
-check the procedure's state in Komodo.
+check the procedures' state in Komodo.
 
 ## Why it is safe against a compromised server
 
@@ -74,8 +78,9 @@ Retention (applied from the PC): 7 daily, 4 weekly, 6 monthly.
 1. Periphery on the server, connected to Core.
 2. `services/backup/<server>.yaml` with its dump jobs (or none), and
    `excludes/<server>.txt`.
-3. In `main.toml`, copy the `backup-pi` stack and both procedures, with the
-   new name, `SERVER=<server>` and `file_paths`.
+3. In `main.toml`, copy the `backup-pi` stack and its three procedures,
+   with the new name, `SERVER=<server>` and `file_paths`. Keep one stack
+   job per stage.
 4. On the server, as root: copy `setup/backup-host.sh` there, then run
    `prep` with that server's dump folders and their uids, and
    `pg-reader <dump> <container> <superuser> <gid>` for each Postgres.
