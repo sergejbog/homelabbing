@@ -86,7 +86,7 @@ description = "Backup jobs for the Pi (services/backup). Never deployed: the bac
 [stack.config]
 server = "pi"
 repo = "sergejbog/homelabbing"
-commit = "c43d1188c3540e7712d0b052d3452dabd5f35699"
+commit = "99fc57dc2c12cffc9654cff37bc5c631c0b92e75"
 webhook_enabled = false
 run_directory = "services/backup"
 file_paths = ["docker-compose.yaml", "pi.yaml"]
@@ -97,8 +97,8 @@ SERVER=pi
 ##
 
 [[procedure]]
-name = "backup-pi"
-description = "Nightly: database dumps, then restic to B2."
+name = "backup-pi-dumps"
+description = "Nightly: consistent database dumps for backup-pi at 04:00. One stack job per stage: Komodo refuses a second run on a busy stack."
 [procedure.config]
 schedule_format = "Cron"
 schedule = "0 30 3 * * *"
@@ -108,14 +108,39 @@ failure_alert = true
 webhook_enabled = false
 
 [[procedure.config.stage]]
-name = "Dump databases"
+name = "Vaultwarden and Komodo"
 enabled = true
 executions = [
-  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-infisical", no_tty = true }, enabled = true },
-  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-bookorbit", no_tty = true }, enabled = true },
   { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-vaultwarden", no_tty = true }, enabled = true },
   { execution.type = "BackupCoreDatabase", execution.params = {}, enabled = true }
 ]
+
+[[procedure.config.stage]]
+name = "Infisical"
+enabled = true
+executions = [
+  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-infisical", no_tty = true }, enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "BookOrbit"
+enabled = true
+executions = [
+  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-bookorbit", no_tty = true }, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "backup-pi"
+description = "Nightly: restic of /srv to B2, with the dumps from backup-pi-dumps (03:30). Separate, so a failed dump doesn't stop the upload."
+[procedure.config]
+schedule_format = "Cron"
+schedule = "0 0 4 * * *"
+schedule_timezone = "Europe/Skopje"
+schedule_alert = false
+failure_alert = true
+webhook_enabled = false
 
 [[procedure.config.stage]]
 name = "Upload to B2"
