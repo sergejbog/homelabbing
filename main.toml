@@ -80,6 +80,72 @@ file_paths = ["docker-compose.yaml"]
 
 ##
 
+[[stack]]
+name = "backup-pi"
+description = "Backup jobs for the Pi (services/backup). Never deployed: the backup-pi procedures run its services. Pinned to a commit; change it with a PR that bumps the sha."
+[stack.config]
+server = "pi"
+repo = "sergejbog/homelabbing"
+commit = "68d4121b0a776838d8f2b81de16ccd63bff7e76f"
+webhook_enabled = false
+run_directory = "services/backup"
+file_paths = ["docker-compose.yaml", "pi.yaml"]
+environment = """
+SERVER=pi
+"""
+
+##
+
+[[procedure]]
+name = "backup-pi"
+description = "Nightly: database dumps, then restic to B2."
+[procedure.config]
+schedule_format = "Cron"
+schedule = "0 30 3 * * *"
+schedule_timezone = "Europe/Skopje"
+schedule_alert = false
+failure_alert = true
+webhook_enabled = false
+
+[[procedure.config.stage]]
+name = "Dump databases"
+enabled = true
+executions = [
+  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-infisical", no_tty = true }, enabled = true },
+  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-bookorbit", no_tty = true }, enabled = true },
+  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "dump-vaultwarden", no_tty = true }, enabled = true },
+  { execution.type = "BackupCoreDatabase", execution.params = {}, enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Upload to B2"
+enabled = true
+executions = [
+  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "restic-backup", no_tty = true }, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "backup-pi-check"
+description = "Weekly: restic check, reading back 10% of the data."
+[procedure.config]
+schedule_format = "Cron"
+schedule = "0 0 5 * * SUN"
+schedule_timezone = "Europe/Skopje"
+schedule_alert = false
+failure_alert = true
+webhook_enabled = false
+
+[[procedure.config.stage]]
+name = "Check"
+enabled = true
+executions = [
+  { execution.type = "RunStackService", execution.params = { stack = "backup-pi", service = "restic-check", no_tty = true }, enabled = true }
+]
+
+##
+
 [[repo]]
 name = "homelabbing"
 [repo.config]
