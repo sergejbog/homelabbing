@@ -20,6 +20,11 @@
 # BookOrbit's scratch space (uploads in flight).
 /srv/bookorbit/tmp
 /srv/bookorbit/data/tmp
+# The books and comics themselves: replaceable, and soon too big (an HDD,
+# 100 GB+). The owner's choice, 2026-11-26. BookOrbit's database dump and
+# data/ (covers) are still backed up: reading progress, stats, settings,
+# series and custom covers, and the list of what the library held.
+/srv/bookorbit/books
 
 # Already kept elsewhere: /srv/restic-old and pi-sd.img on the PC hold the
 # old repo, and the archive Infisical was restored from it.

@@ -120,7 +120,9 @@ restic restore latest --target /tmp/restore --include /srv/backup/dumps
 - Infisical: `pg_restore` `dumps/infisical/db.dump` into an empty
   database. It also needs `/srv/infisical/secrets` (the `encryption_key`).
 - BookOrbit: `pg_restore` `dumps/bookorbit/db.dump` into an empty
-  database, with `/srv/bookorbit/data` and `books` from the snapshot.
+  database, with `/srv/bookorbit/data` from the snapshot. The books are
+  not backed up (replaceable, and too big): they come from their own
+  disk, at the same paths, or the library rescans what is left.
 - Vaultwarden: stop it, put `dumps/vaultwarden/db.sqlite3` in place as
   `data/db.sqlite3` with the rest of `data/`, and start it.
 - After restoring a Postgres database, rerun `pg-reader` for it: a dump
