@@ -86,7 +86,7 @@ description = "Backup jobs for the Pi (services/backup). Never deployed: the bac
 [stack.config]
 server = "pi"
 repo = "sergejbog/homelabbing"
-commit = "68d4121b0a776838d8f2b81de16ccd63bff7e76f"
+commit = "c43d1188c3540e7712d0b052d3452dabd5f35699"
 webhook_enabled = false
 run_directory = "services/backup"
 file_paths = ["docker-compose.yaml", "pi.yaml"]
