@@ -1,0 +1,101 @@
+# Backup jobs, the same file on every server. Komodo stack "backup-<server>"
+# (main.toml) runs them one at a time with RunStackService from the
+# "backup-<server>" procedures. Nothing here is ever deployed: every service
+# is in the "jobs" profile, so `docker compose up` starts nothing.
+#
+# - The stack is pinned with `commit` in main.toml, because RunStackService
+#   re-clones the repo before every run. A change here only takes effect
+#   after a PR that bumps that sha.
+# - <server>.yaml (next to this file) adds that server's database dump jobs.
+#   They write consistent copies to /srv/backup/dumps/<service>/ before
+#   restic runs.
+# - restic reads /srv read-only and uploads to B2 through the S3 API, into
+#   <bucket>/<server>/. The server's B2 key may only hide files, never delete
+#   a version, and the bucket's Object Lock (governance, 30 days) keeps every
+#   version anyway. Forget and prune run from the admin PC, never here.
+# - Secrets are root-only files in /srv/backup/secrets, placed once by the
+#   host runner. They are not in Komodo, Infisical or `docker inspect`.
+# - SERVER comes from the stack's `environment` in main.toml.
+name: backup
+
+x-restic: &restic
+  image: restic/restic:0.19.1@sha256:136600b6ff6843d61d355f7f71f460a166429f35de6fd11b568fece3c9a4d510
+  profiles: [jobs]
+  restart: "no"
+  # Root, but only DAC_READ_SEARCH: it can read every file (the services run
+  # as different uids) and write nothing outside its cache.
+  user: "0:0"
+  read_only: true
+  cap_drop: [ALL]
+  cap_add: [DAC_READ_SEARCH]
+  security_opt: ["no-new-privileges:true"]
+  mem_limit: 768m
+  pids_limit: 128
+  environment:
+    RESTIC_REPOSITORY_FILE: /run/secrets/restic_repository
+    RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+    # An AWS-style credentials file with the server's B2 key.
+    AWS_SHARED_CREDENTIALS_FILE: /run/secrets/s3_credentials
+    RESTIC_CACHE_DIR: /cache
+    # Temporary pack files go to disk, not to RAM.
+    TMPDIR: /scratch
+    RESTIC_PROGRESS_FPS: "0.016"
+  secrets:
+    - restic_repository
+    - restic_password
+    - s3_credentials
+  volumes:
+    - cache:/cache
+    - scratch:/scratch
+  networks:
+    - egress
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  # Nightly, after the dumps.
+  restic-backup:
+    <<: *restic
+    volumes:
+      - cache:/cache
+      - scratch:/scratch
+      - /srv:/srv:ro
+      - ./excludes/${SERVER:?set SERVER in the stack environment}.txt:/etc/restic/excludes.txt:ro
+    command:
+      - backup
+      - --host
+      - ${SERVER}
+      - --tag
+      - nightly
+      - --exclude-file
+      - /etc/restic/excludes.txt
+      - --exclude-caches
+      - /srv
+
+  # Weekly: verifies the structure and reads back a tenth of the data.
+  # Egress from B2 is free up to 3x the stored data per month.
+  restic-check:
+    <<: *restic
+    command:
+      - check
+      - --read-data-subset=10%
+
+secrets:
+  # root:root 0600 on the host, written by the host runner.
+  restic_repository:
+    file: /srv/backup/secrets/restic_repository # s3:https://s3.<region>.backblazeb2.com/<bucket>/<server>
+  restic_password:
+    file: /srv/backup/secrets/restic_password
+  s3_credentials:
+    file: /srv/backup/secrets/s3_credentials
+
+volumes:
+  cache: {}
+  scratch: {}
+
+networks:
+  # restic only. Internet access for B2; shared with nothing else.
+  egress: {}

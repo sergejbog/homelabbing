@@ -1,0 +1,127 @@
+# The Pi's dump jobs, added to docker-compose.yaml by the backup-pi stack
+# (file_paths in main.toml). Each one uses the image and uid of the service
+# it dumps, writes to its own /srv/backup/dumps/<service>/ (owned by that
+# uid) and never sees the B2 key or the restic password.
+#
+# Dumps are uncompressed on purpose: restic compresses and deduplicates
+# them, which a gzip'd dump would defeat. Each job writes to a temporary
+# name and renames at the end, so a failed run leaves the last good dump.
+# Komodo's own database is dumped by the BackupCoreDatabase execution in
+# the same procedure stage (into /srv/komodo/backups).
+
+# Postgres: pg_dump of one database as the read-only role "backup" (made
+# by `backup-host.sh pg-reader`, which also writes its password file), so
+# a dump job can read every table and change nothing. The image must be
+# the server's own: pg_dump can't dump a newer server.
+x-pg-dump: &pg-dump
+  profiles: [jobs]
+  restart: "no"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  mem_limit: 256m
+  pids_limit: 32
+  entrypoint:
+    - /bin/sh
+    - -ec
+    - |
+      PGPASSWORD="$$(cat /run/secrets/db_password)"
+      export PGPASSWORD
+      pg_dump -Fc --compress=0 -f /dumps/db.dump.tmp
+      pg_restore --list /dumps/db.dump.tmp > /dev/null
+      mv -f /dumps/db.dump.tmp /dumps/db.dump
+      ls -l /dumps/db.dump
+  tmpfs:
+    - /tmp
+
+services:
+  dump-infisical:
+    <<: *pg-dump
+    image: postgres:16.16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d
+    # The uid of infisical-db.
+    user: "70:70"
+    environment:
+      PGHOST: infisical-db
+      PGDATABASE: infisical
+      PGUSER: backup
+      PGCONNECT_TIMEOUT: "10"
+      HOME: /tmp
+    secrets:
+      - source: infisical_db_password
+        target: db_password
+    volumes:
+      - /srv/backup/dumps/infisical:/dumps
+    networks:
+      - infisical_internal
+
+  dump-bookorbit:
+    <<: *pg-dump
+    image: pgvector/pgvector:0.8.7-pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
+    # The uid of bookorbit-db. It has no passwd entry, hence HOME.
+    user: "65527:65527"
+    environment:
+      PGHOST: bookorbit-db
+      PGDATABASE: bookorbit
+      PGUSER: backup
+      PGCONNECT_TIMEOUT: "10"
+      HOME: /tmp
+    secrets:
+      - source: bookorbit_db_password
+        target: db_password
+    volumes:
+      - /srv/backup/dumps/bookorbit:/dumps
+    networks:
+      - bookorbit_db
+
+  dump-vaultwarden:
+    image: vaultwarden/server:1.37.5@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f
+    profiles: [jobs]
+    restart: "no"
+    # The vaultwarden stack's uid, so it can open the database read-only
+    # (and its -shm file) next to the running server.
+    user: "65533:65533"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    pids_limit: 32
+    network_mode: none
+    environment:
+      # The image's default is the relative "data" (the same folder, as the
+      # working directory is /); absolute keeps the printed path predictable.
+      DATA_FOLDER: /data
+    # `vaultwarden backup` runs VACUUM INTO /data/db_<time>.sqlite3, a
+    # consistent copy taken while the server keeps running.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        out="$$(/vaultwarden backup)"
+        echo "$$out"
+        f="$$(printf '%s\n' "$$out" | sed -n "s/^Backup to '\(.*\)' was successful$$/\1/p")"
+        case "$$f" in /data/db_*.sqlite3) ;; *) echo "unexpected backup path: $$f" >&2; exit 1 ;; esac
+        cp "$$f" /dumps/db.sqlite3.tmp
+        rm -f "$$f"
+        mv -f /dumps/db.sqlite3.tmp /dumps/db.sqlite3
+        ls -l /dumps/db.sqlite3
+    volumes:
+      - /srv/vaultwarden/data:/data
+      - /srv/backup/dumps/vaultwarden:/dumps
+    tmpfs:
+      - /tmp
+
+# Passwords of the "backup" roles, root:<the job's gid> 0640.
+secrets:
+  infisical_db_password:
+    file: /srv/backup/dump-secrets/infisical_db_password
+  bookorbit_db_password:
+    file: /srv/backup/dump-secrets/bookorbit_db_password
+
+networks:
+  # The stacks' private database networks. No internet.
+  infisical_internal:
+    name: infisical_internal
+    external: true
+  bookorbit_db:
+    name: bookorbit_db
+    external: true
