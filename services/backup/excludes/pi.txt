@@ -1,0 +1,34 @@
+# restic --exclude-file for the Pi. Paths are as seen in the container,
+# which mounts the host's /srv at /srv.
+#
+# Live database files: never copied raw. The dump jobs in pi.yaml (and
+# Komodo's BackupCoreDatabase into /srv/komodo/backups) write consistent
+# copies first.
+/srv/infisical/db
+/srv/infisical/redis
+/srv/bookorbit/postgres
+/srv/komodo/mongo
+/srv/vaultwarden/data/db.sqlite3
+/srv/vaultwarden/data/db.sqlite3-*
+# Left behind only if a Vaultwarden dump job died halfway.
+/srv/vaultwarden/data/db_*.sqlite3
+/srv/vaultwarden/data/icon_cache
+
+# Komodo Core's clones and Action scratch space; recreated on demand.
+/srv/komodo/core/repo-cache
+/srv/komodo/core/action-cache
+# BookOrbit's scratch space (uploads in flight).
+/srv/bookorbit/tmp
+/srv/bookorbit/data/tmp
+
+# Already kept elsewhere: /srv/restic-old and pi-sd.img on the PC hold the
+# old repo, and the archive Infisical was restored from it.
+/srv/restic-old
+/srv/infisical-archive
+
+# The backup's own keys. A copy is in Vaultwarden; inside the repo it would
+# be locked by itself.
+/srv/backup/secrets
+# The dump roles' passwords: useless after a restore (pg_dump does not
+# carry roles; rerun pg-reader).
+/srv/backup/dump-secrets
